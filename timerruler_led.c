@@ -11,6 +11,7 @@
 #include "bitoperations.h"
 #include "timerruler_const.h"
 #include "timerruler_led.h"
+
 // define array for specific LEDs, [PORT][BIT] (PORTB=2, PORTD=4)
 const uint8_t ledArray[NUM_LEDS][2] = {
 	{4, 0}, {4, 1}, {4, 2}, {4, 3},

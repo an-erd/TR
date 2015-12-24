@@ -34,29 +34,27 @@
 #include "timerruler_const.h"
 #include "timerruler_led.h"
 
-// EEPROM storage
-uint8_t EEMEM config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};		// store configuration params in EEPROM
+uint8_t EEMEM config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};
 
 // global variables
 volatile sGlobalStatus program_status = {
-	.phase				= PHASE_RESET,
-	.current_led_step	= 0,
-	.buttons			= { {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,},},
-	.green_led_mode = LED_OFF,
-	.green_led_max_cycle = 0,
-	.green_led_current_cycle = 0,
-	.green_led_OCR1B_basis = 0,
-	.orange_led_counter = ORANGE_LED_EFFECT_DELAY,	// delay when to update orange leds during effect
-	.orange_led_current_step = 0,					// updated in ISR, etc. (decrease)
-	.orange_led_max_step = ORANGE_LED_EFFECT_STEPS,	// const
-	.orange_led_period = 0,							// set to 1 to start, an reload with ORANGE_LED_EFFECT_PERIOD 
+	.phase						= PHASE_RESET,
+	.current_led_step			= 0,
+	.buttons					= { {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,},},
+	.green_led_mode				= LED_OFF,
+	.green_led_max_cycle		= 0,
+	.green_led_current_cycle	= 0,
+	.green_led_OCR1B_basis	= 0,
+	.orange_led_counter			= ORANGE_LED_EFFECT_DELAY,	// delay when to update orange leds during effect
+	.orange_led_current_step	= 0,						// updated in ISR, etc. (decrease)
+	.orange_led_max_step		= ORANGE_LED_EFFECT_STEPS,	// const
+	.orange_led_period			= 0,						// set/reload to ORANGE_LED_EFFECT_PERIOD to start
 	.PINChistory = 0x00,
 };
 
 ISR ( TIMER0_COMPA_vect )
 {
-	volatile uint8_t PORTD_modified;
-	volatile uint8_t led_effect_direction = 0;						// 0 for ACTIVE=LR, 1 for REST=RL
+	volatile uint8_t	button_cnt = NUM_SWITCHES;
 	
 	// interrupt routine fired every 1ms gone
 
@@ -72,63 +70,30 @@ ISR ( TIMER0_COMPA_vect )
 	//		a1)	-> do: reset counter, and clear the "wait for release" bit
 	//		a2) -> else: (if not "waiting for release", inc in-a-row-counter and
 	//			if threshold reached -> set the "button pressed" flag
-	if ( !program_status.buttons[0].temp_state_button_pressed ) {
-		program_status.buttons[0].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
-		program_status.buttons[0].temp_wait_for_button_release = 0;		
-	} else {
-		if (! program_status.buttons[0].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
-			if ( ++program_status.buttons[0].counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.buttons[0].button_pressed = 1;					// button pressed and stable, debounce interval gone
-				program_status.buttons[0].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
-				program_status.buttons[0].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
+	while (button_cnt--) {
+		if ( !program_status.buttons[button_cnt].temp_state_button_pressed ) {
+			program_status.buttons[button_cnt].counter_high_in_a_row		= SWITCH_PRELOAD;
+			program_status.buttons[button_cnt].temp_wait_for_button_release = 0;		
+		} else {
+			if (! program_status.buttons[button_cnt].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
+				if ( ++program_status.buttons[button_cnt].counter_high_in_a_row == SWITCH_COMPARE ){
+					program_status.buttons[button_cnt].button_pressed = 1;					// button pressed and stable, debounce interval gone
+					program_status.buttons[button_cnt].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
+					program_status.buttons[button_cnt].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
+				}
 			}
 		}
 	}
-	if ( !program_status.buttons[1].temp_state_button_pressed ) {
-		program_status.buttons[1].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
-		program_status.buttons[1].temp_wait_for_button_release = 0;		
-	} else {
-		if (! program_status.buttons[1].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
-			if ( ++program_status.buttons[1].counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.buttons[1].button_pressed = 1;					// button pressed and stable, debounce interval gone
-				program_status.buttons[1].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
-				program_status.buttons[1].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
-			}
-		}
-	}
-	if ( !program_status.buttons[2].temp_state_button_pressed ) {
-		program_status.buttons[2].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
-		program_status.buttons[2].temp_wait_for_button_release = 0;		
-	} else {
-		if (! program_status.buttons[2].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
-			if ( ++program_status.buttons[2].counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.buttons[2].button_pressed = 1;					// button pressed and stable, debounce interval gone
-				program_status.buttons[2].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
-				program_status.buttons[2].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
-			}
-		}
-	}
+
 
 	// the orange led effect is done with timer0/A
-	if ( program_status.phase & (1 << PHASE_TRAINING) )
-	{
-		if (! --program_status.orange_led_counter)
-		{
-			// delay done, reload
+	if ( program_status.phase & BIT(PHASE_TRAINING) ){
+		if (! --program_status.orange_led_counter){
 			program_status.orange_led_counter = ORANGE_LED_EFFECT_DELAY;
-			
-			// decrease orange step counter
-			if(program_status.orange_led_current_step) 
-			{
-				program_status.orange_led_current_step--;
-			
+			if(program_status.orange_led_current_step--) {
 				// copy PORTD, change orange led relevant part, and write back to PORTD (to avoid flickering... necessary? TODO)
-				PORTD_modified = PORTD;
-			led_effect_direction = (bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1;
-
-				bit_clear(PORTD_modified, LED_PORTD_ORANGE);
-				bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][led_effect_direction] );
-				PORTD = PORTD_modified;
+				bit_clear(PORTD, LED_PORTD_ORANGE);
+				bit_set(PORTD, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );
 			}
 		}
 	}
@@ -159,35 +124,23 @@ ISR ( TIMER1_COMPA_vect )
 			break;
 	}
 	
-	// if in training phase, update
-	if ( program_status.phase & (1 << PHASE_TRAINING) )
-	{
-		// red led blinking and seconds backward counter
-		if (! --program_status.backward_counter_sec_to_go)
-		{
-			// all way to go done, just turn on/ensure, that the blinking led's now on!
+	if ( program_status.phase & BIT(PHASE_TRAINING)){
+		if (! --program_status.backward_counter_sec_to_go){
 			bit_set(PORTD, BIT(program_status.current_led_step));
 		} else {
-			// flip blinking led for phase progress here, the other (stable) leds will be set in perform_phase_training()
 			bit_flip(PORTD, BIT(program_status.current_led_step));
 		}
 		
-		// prepare counter for next orange leds effect
-		if (! --program_status.orange_led_period)
-		{
-			// all orange steps done, so reset to max value and thus fire effect
+		if (! --program_status.orange_led_period) {
 			program_status.orange_led_current_step = program_status.orange_led_max_step;
-				
-			// reload the period timer to defined value
 			program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
 		}
 	}
 }
 
-// Interrupt for Timer/Counter1 Compare Match B
 ISR ( TIMER1_COMPB_vect )
 {
-	// intermediate interrupt fired, only green led tasks to do...
+	// update only green led 
 	switch (program_status.green_led_mode) {
 		case HEARTBEAT_LED:
 			led_set(LED9, ON);		// no change in compare value, hit comp A in next cycle
@@ -198,18 +151,16 @@ ISR ( TIMER1_COMPB_vect )
 		case FAST_FLASHING_LED:
 			led_flip(LED9);
 			if (--program_status.green_led_current_cycle){
-				// some more steps to go, prepare for next hit/cycle
-				OCR1B += program_status.green_led_OCR1B_basis;
+				OCR1B += program_status.green_led_OCR1B_basis;	// prepare for next hit/cycle
 			} else {
-				// last step in cycle reached, before comp A matches -> prepare for next cycle
 				OCR1B = program_status.green_led_OCR1B_basis;	// reinitialize compare value for next cycle to first hit
 				program_status.green_led_current_cycle = program_status.green_led_max_cycle; // reinitialize cycle counter
 			}
 			break;
 		case SLOW_FLASHING_LED:
-			led_set(LED9, ON);		// no change in compare value, hit comp A in next cycle
+			led_set(LED9, ON);		// hit comp A in next cycle
 			break;
-		case LED_OFF: 				// nothing to do, should be off
+		case LED_OFF: 				// should already be off
 			break; 
 		default:
 			break;
@@ -228,14 +179,15 @@ ISR ( PCINT1_vect )
 	changedbits = PINC ^ program_status.PINChistory;
 	program_status.PINChistory = PINC;
 
-	if(changedbits & (1 << PINC0))
-		program_status.buttons[0].temp_state_button_pressed = !(PINC & (1 << PINC0));	// PINC0 chanced
-	
-	if(changedbits & (1 << PINC1))
-		program_status.buttons[1].temp_state_button_pressed = !(PINC & (1 << PINC1));	// PINC1 chanced
-
-	if(changedbits & (1 << PINC2))
-		program_status.buttons[2].temp_state_button_pressed = !(PINC & (1 << PINC2));	// PINC2 chanced
+	if(changedbits & BIT(PINC0)){
+		program_status.buttons[0].temp_state_button_pressed = !(PINC & BIT(PINC0));
+	}
+	if(changedbits & BIT(PINC1)){
+		program_status.buttons[1].temp_state_button_pressed = !(PINC & BIT(PINC1));
+	}
+	if(changedbits & BIT(PINC2)){
+		program_status.buttons[2].temp_state_button_pressed = !(PINC & BIT(PINC2));
+	}
 }
 
 void init_global_vars(void)
@@ -255,7 +207,7 @@ void init_io_pins(void)
 	PCICR  |= BIT(PCIE1);									// pin change interrupt enable
 	PCMSK1 |= ( BIT(PCINT8) | BIT(PCINT9) | BIT(PCINT10) );	// Enable pin change detection
 
-	program_status.PINChistory = PINC;						// remember current state of PINC
+	program_status.PINChistory = PINC;
 	
 	return;	
 }
@@ -304,38 +256,38 @@ void set_green_led_mode(uint8_t led_mode)
 	// actual handling is done in ISR for timer1 compare match A/B
 	switch (led_mode) {
 		case LED_OFF:
-		program_status.green_led_mode			= LED_OFF;
-		program_status.green_led_max_cycle		= 0;
-		program_status.green_led_current_cycle	= 0;
-		program_status.green_led_OCR1B_basis	= 0;
-		break;
+			program_status.green_led_mode			= LED_OFF;
+			program_status.green_led_max_cycle		= 0;
+			program_status.green_led_current_cycle	= 0;
+			program_status.green_led_OCR1B_basis	= 0;
+			break;
 		case FAST_FLASHING_LED:
-		// 4 Hz
-		program_status.green_led_mode			= FAST_FLASHING_LED;
-		program_status.green_led_max_cycle		= 7;
-		program_status.green_led_current_cycle	= program_status.green_led_max_cycle;
-		program_status.green_led_OCR1B_basis	= 3906;
-		break;
+			// 4 Hz
+			program_status.green_led_mode			= FAST_FLASHING_LED;
+			program_status.green_led_max_cycle		= 7;
+			program_status.green_led_current_cycle	= program_status.green_led_max_cycle;
+			program_status.green_led_OCR1B_basis	= 3906;
+			break;
 		case SLOW_FLASHING_LED:
-		// 1 Hz
-		program_status.green_led_mode = SLOW_FLASHING_LED;
-		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-		program_status.green_led_OCR1B_basis = 15625;
-		break;
+			// 1 Hz
+			program_status.green_led_mode = SLOW_FLASHING_LED;
+			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+			program_status.green_led_OCR1B_basis = 15625;
+			break;
 		case HEARTBEAT_LED:
-		// 1 cycle: 0 -> .9s/28125 ticks OFF, -> 1s/31250 ticks ON
-		program_status.green_led_mode = HEARTBEAT_LED;
-		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-		program_status.green_led_OCR1B_basis = 28125;
-		break;
+			// 1 cycle: 0 -> .9s/28125 ticks OFF, -> 1s/31250 ticks ON
+			program_status.green_led_mode = HEARTBEAT_LED;
+			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+			program_status.green_led_OCR1B_basis = 28125;
+			break;
 		case SHORT_HEARTBEAT_LED:
-		// just blink very short...
-		program_status.green_led_mode = SHORT_HEARTBEAT_LED;
-		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-		program_status.green_led_OCR1B_basis = 30800;
-		break;
+			// just blink very short...
+			program_status.green_led_mode = SHORT_HEARTBEAT_LED;
+			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+			program_status.green_led_OCR1B_basis = 30800;
+			break;
 		default:
-		break;
+			break;
 	}
 	
 	restart_timer1();
@@ -453,14 +405,11 @@ void store_config_params_permanently()
 {
 	uint8_t local_config_params_to_ee[CONFIG_NR_CYCLES+1];
 	
-	
-	// unrolled loop, copy program_status.config_params to local variable
 	local_config_params_to_ee[CONFIG_INTERVAL_CNT]			= program_status.config_params[CONFIG_INTERVAL_CNT];
 	local_config_params_to_ee[CONFIG_NR_INTERVAL_ACTIVE]	= program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
 	local_config_params_to_ee[CONFIG_NR_INTERVAL_REST]		= program_status.config_params[CONFIG_NR_INTERVAL_REST];
 	local_config_params_to_ee[CONFIG_NR_CYCLES]				= program_status.config_params[CONFIG_NR_CYCLES];
 
-	// write block from local variable to EEPROM
 	eeprom_write_block((const void*) local_config_params_to_ee, (void*) config_params_ee, CONFIG_NR_CYCLES+1 );
 	
 	return;
@@ -510,8 +459,8 @@ void perform_phase_training(void)
 	uint8_t exit_training_immediately = 0;			// stop training and go back to config, will occur if T2 is pressed 
 	
 	// set TRAINING phase
-	program_status.phase &= ~(1 << PHASE_MAINPROG);	// clear bit MAINPROG
-	program_status.phase |=  (1 << PHASE_TRAINING);	// set bit TRAINIG
+	program_status.phase &= ~BIT(PHASE_MAINPROG);	// clear bit MAINPROG
+	program_status.phase |=  BIT(PHASE_TRAINING);	// set bit TRAINIG
 	
 	// prepare green and orange leds
 	set_green_led_mode(HEARTBEAT_LED);								// green led heartbeat mode -> training phase
@@ -538,8 +487,8 @@ void perform_phase_training(void)
 		in_cycle_steps_done = 0;						// increase 0->2 in each cycle (+1 for ACTIVE and REST completed, resp.)
 		
 		// set/switch REST -> ACTIVE
-		program_status.phase &= ~(1 << PHASE_REST);		// clear bit REST
-		program_status.phase |= (1 << PHASE_ACTIVE);	// set bit ACTIVE
+		program_status.phase &= ~BIT(PHASE_REST);		// clear bit REST
+		program_status.phase |=  BIT(PHASE_ACTIVE);	// set bit ACTIVE
 		
 		do { // in-cycle 2-step loop
 			// Complete an ACTIVE or REST phase:
@@ -585,16 +534,16 @@ void perform_phase_training(void)
 					if (program_status.buttons[2].button_pressed){
 						program_status.buttons[2].button_pressed = 0;
 						
-						if (program_status.phase & (1 << PHASE_TRAINING))
+						if (program_status.phase & BIT(PHASE_TRAINING))
 						{
 							// switch to PAUSE, and thus decreasing .backward_counter_sec_to_go and orange leds will be stopped
-							program_status.phase &= ~(1 << PHASE_TRAINING);		// clear bit TRAINING
-							program_status.phase |=  (1 << PHASE_PAUSE);		// set bit PAUSE
+							program_status.phase &= ~BIT(PHASE_TRAINING);		// clear bit TRAINING
+							program_status.phase |=  BIT(PHASE_PAUSE);		// set bit PAUSE
 							set_green_led_mode(SLOW_FLASHING_LED);
-						} else if (program_status.phase & (1 << PHASE_PAUSE)){
+						} else if (program_status.phase & BIT(PHASE_PAUSE)){
 							// switch to TRAINING, thus enable decreasing .backward_counter_sec_to_go and orange leds again
-							program_status.phase &= ~(1 << PHASE_PAUSE);		// clear bit PAUSE
-							program_status.phase |=  (1 << PHASE_TRAINING);		// set bit TRAINING
+							program_status.phase &= ~BIT(PHASE_PAUSE);		// clear bit PAUSE
+							program_status.phase |=  BIT(PHASE_TRAINING);		// set bit TRAINING
 							set_green_led_mode(HEARTBEAT_LED);
 						}
 					}
@@ -603,8 +552,8 @@ void perform_phase_training(void)
 			}
 			
 			// switch ACTIVE -> REST		
-			program_status.phase &= ~(1<< PHASE_ACTIVE);	// clear bit ACTIVE
-			program_status.phase |=  (1 << PHASE_REST);		// set bit REST
+			program_status.phase &= ~BIT(PHASE_ACTIVE);	// clear bit ACTIVE
+			program_status.phase |=  BIT(PHASE_REST);		// set bit REST
 			in_cycle_steps_done++;
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
 
@@ -623,10 +572,10 @@ void perform_phase_training(void)
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
 
-	program_status.phase &= ~(1 << PHASE_TRAINING);			// clear bit TRAINING, ACTIVE, REST
-	program_status.phase &= ~(1 << PHASE_ACTIVE);
-	program_status.phase &= ~(1 << PHASE_REST);
-	program_status.phase |=	 (1 << PHASE_MAINPROG);			// set bit MAINPROG
+	program_status.phase &= ~BIT(PHASE_TRAINING);			// clear bit TRAINING, ACTIVE, REST
+	program_status.phase &= ~BIT(PHASE_ACTIVE);
+	program_status.phase &= ~BIT(PHASE_REST);
+	program_status.phase |=	 BIT(PHASE_MAINPROG);			// set bit MAINPROG
 	
 	return;	
 }
@@ -661,7 +610,7 @@ int main(void)
 #endif //_PRODUCTION_TEST_ROUTINE_
 
 	// prepare "wait mode" state
-	program_status.phase = (1 << PHASE_MAINPROG);
+	program_status.phase = BIT(PHASE_MAINPROG);
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 
 	while (1)
@@ -704,7 +653,7 @@ int main(void)
 			perform_phase_training();			// ACTIVE and REST phases, until number of cycles reached, or repeat endlessly
 	
 			// go to "wait mode" again
-			program_status.phase = (1 << PHASE_MAINPROG);	// just to ensure, not necessary? TODO
+			program_status.phase = BIT(PHASE_MAINPROG);	// just to ensure, not necessary? TODO
 			set_green_led_mode(SHORT_HEARTBEAT_LED);
 		}
 	}

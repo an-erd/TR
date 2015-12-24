@@ -28,7 +28,6 @@ typedef struct
 												// ...threshold[step 0..4][0=ACTIVE/1=REST]
 	uint8_t			current_led_step;					// current step 1-5 of training interval
 	uint8_t			backward_counter_sec_to_go;			// sec backward counter to complete step
-	uint8_t			current_phase;						// PHASE_ACTIVE or PHASE_REST
 	
 	SButtonControl	buttons[NUM_SWITCHES];
 	
@@ -44,8 +43,7 @@ typedef struct
 	uint8_t			orange_led_max_step;
 	uint8_t			orange_led_period;					// time period in seconds until next effect
 
-	// remember last state of PINC
-	uint8_t			PINChistory;						// set to default is high because the pull-up
+	uint8_t			PINChistory;
 } sGlobalStatus;
 
 #endif 
