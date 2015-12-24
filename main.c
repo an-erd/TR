@@ -6,25 +6,27 @@
  */ 
 
 /* atmega328p ports used:
-	 PC0	Switch T1	PCINT8
-	 PC1	Switch T2	PCINT9
-	 PC2	Switch T3	PCINT10
+	 PC0	Switch T1	PCINT8		0
+	 PC1	Switch T2	PCINT9		1
+	 PC2	Switch T3	PCINT10		2
 	(PC4	I2C SDA		unused)
 	(PC5	I2C SCL		unused)
-	 PD0	LED1 RED			0
-	 PD1	LED2 RED			1
-	 PD2	LED3 RED			2
-	 PD3	LED4 RED			3
-	 PD4	LED5 RED			4
-	 PD5	LED6 ORANGE			5
-	 PD6	LED7 ORANGE			6
-	 PD7	LED8 ORANGE			7
-	 PB1 	LED9 GREEN	OC1A	8
-*/	
+	 PD0	LED1 RED				0
+	 PD1	LED2 RED				1
+	 PD2	LED3 RED				2
+	 PD3	LED4 RED				3
+	 PD4	LED5 RED				4
+	 PD5	LED6 ORANGE				5
+	 PD6	LED7 ORANGE				6
+	 PD7	LED8 ORANGE				7
+	 PB1 	LED9 GREEN				8
+*/
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
 #include <util/delay.h>
 
 #include "bitoperations.h"
@@ -38,13 +40,7 @@ uint8_t EEMEM config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};		// store con
 // global variables
 volatile sGlobalStatus program_status = {
 	.phase = PHASE_RESET,
-//	.config_params[CONFIG_INTERVAL_CNT],			// will be read from EEPROM or set in read_permanent_config_params()
-//	.config_params[CONFIG_NR_INTERVAL_ACTIVE],		// --"--
-//	.config_params[CONFIG_NR_INTERVAL_REST],		// --"--
-//	.config_params[CONFIG_NR_CYCLES],				// --"--
-	.interval_basis_sec = 0,						// calculated value
 	.current_led_step = 0,
-//	.led_steps_threshold,							// calculated values
 	.counter_active = 0, 
 	.counter_rest = 0,
 	.PINChistory = 0x00,
@@ -67,7 +63,6 @@ volatile sGlobalStatus program_status = {
 	.orange_led_period = 0							// set to 1 to start, an reload with ORANGE_LED_EFFECT_PERIOD 
 };
 
-// Interrupt for Timer/Counter0 Compare Match A
 ISR ( TIMER0_COMPA_vect )
 {
 	volatile uint8_t PORTD_modified;
@@ -233,7 +228,6 @@ ISR ( TIMER1_COMPB_vect )
 	}
 }
 
-// Interrupt for switches
 ISR ( PCINT1_vect )
 {
 	volatile uint8_t changedbits;
@@ -265,16 +259,14 @@ void init_global_vars(void)
 
 void init_io_pins(void)
 {
-	// configure I/O pins
-	DDRB = 0xFF;				// all port B as output (only PB1 used)
-	DDRC = 0x00;				// all port C as input  (only PC0..2 used for switch T1.3, I2C (PC4, PC5) not considered yet)
-	DDRD = 0xFF;				// all port D as output (all PD0..7 used for LEDs)
-	PORTC |= ((1 << PORTC2) | (1 << PORTC1) | (1 << PORTC0));	// PC0..2 Input w/pull-up, and leave others on reset state
+	DDRB  = BIT(DDB1);				// PB1 as output, all other as input
+	DDRC  = 0x00;					// all port C as input  (only PC0..2 used for switch T1..3, I2C (PC4, PC5) not considered yet)
+	DDRD  = 0xFF;					// all port D as output (all PD0..7 used for LEDs)
+	PORTC = 0xFF;					// PC0..2 used for switches, but set all as input w/pull-up
 	
-	// configure pin chance interrupt
-	PCICR  |= (1 << PCIE1);									// pin change interrupt enable
-	PCMSK1 |= ( (1<<PCINT8) | (1<<PCINT9) | (1<<PCINT10) );	// Enable pin change detection
-	
+	PCICR  |= BIT(PCIE1);									// pin change interrupt enable
+	PCMSK1 |= ( BIT(PCINT8) | BIT(PCINT9) | BIT(PCINT10) );	// Enable pin change detection
+
 	program_status.PINChistory = PINC;						// remember current state of PINC
 	
 	return;	
@@ -288,102 +280,99 @@ void init_timers(void)
 	// - timer1b: used together with timer1a to get a GREEN LED heartbeat (.1ms/.9s blink), of green flashing led
 
 	// timer0
-	TCCR0A |= (1 << WGM01);						// Configure timer0 for CTC mode,
-	TCCR0B |= ((1 << CS00) | (1 << CS01));		// Start timer @F_CPU/64
+	TCCR0A |= BIT(WGM01);						// Configure timer0 for CTC mode,
+	TCCR0B |= ( BIT(CS00) | BIT(CS01));			// Start timer @F_CPU/64
 	OCR0A = 124;								// 8 MHz, 8bit, 1/64 prescale -> 1 KHz (125 ticks / .001s=1ms
-	TIMSK0 |= (1 << OCIE0A);					// Enable Timer/Counter Compare Match A interrupt
+	TIMSK0 |= BIT(OCIE0A);						// Enable Timer/Counter Compare Match A interrupt
 	
 	// timer1
-	TCCR1B |= ((1 << WGM12) | (1 << CS12)); 	// Configure timer1 for CTC mode, start timer @F_CPU/256
+	TCCR1B |= ( BIT(WGM12) | BIT(CS12)); 		// Configure timer1 for CTC mode, start timer @F_CPU/256
 	OCR1A = 31249; 								// 8 MHz, 16bit, 1/256 prescale -> 1 Hz (= 31250 Ticks/ 1s)
 	OCR1B =  3124;								// and 3125 Ticks / .1s
-	TIMSK1 |= ((1 << OCIE1A ) | (1 << OCIE1B)); 	// Enable Timer/Counter Compare Match interrupt on both channel A and B
+	TIMSK1 |= ( BIT(OCIE1A) | BIT(OCIE1B)); 	// Enable Timer/Counter Compare Match interrupt on both channel A and B
 
 	return;
 }
 
 void restart_timer1(void)
 {
-	uint8_t history_TCCR1B = TCCR1B & (( 1 << CS10) 
-		| (1 << CS11) | (1 << CS12));	// copy current setting
-	TCCR1B &= ~history_TCCR1B;			// clear all set clock bits in TCCR1B
+	uint8_t history_TCCR1B = TCCR1B & (BIT(CS10)|BIT(CS11)|BIT(CS12));
+
+	TCCR1B &= ~history_TCCR1B;			// stop clock
 	TCNT1 = 0;							// reset TCNT1 counter
 
-	// prepare green led things	
-	led_set(LED9, OFF);					// always restart timer1, comp B with green led turned off
+	// prepare green led things
+	led_set(LED9, OFF);
 	OCR1B = program_status.green_led_OCR1B_basis;	// set correct OCR1B compare value
 	
-	// start clock again
-	TCCR1B |= history_TCCR1B;			// restore previously set clock bits in TCCR1B
+	TCCR1B |= history_TCCR1B;			// start clock
 			
 	return;
 }
 
 void set_green_led_mode(uint8_t led_mode)
 {
-	// set configuration parameters for green led, 
+	// set configuration parameters for green led,
 	// actual handling is done in ISR for timer1 compare match A/B
 	switch (led_mode) {
 		case LED_OFF:
-			program_status.green_led_mode = LED_OFF;
-			program_status.green_led_max_cycle = 0;
-			program_status.green_led_current_cycle = 0;
-			program_status.green_led_OCR1B_basis = 0;
-			break;
+		program_status.green_led_mode			= LED_OFF;
+		program_status.green_led_max_cycle		= 0;
+		program_status.green_led_current_cycle	= 0;
+		program_status.green_led_OCR1B_basis	= 0;
+		break;
 		case FAST_FLASHING_LED:
-			// 4 Hz, 2 cycles: 0->.25s/7812 OFF -> .5s/15624 ON -> .75s/28436 OFF -> 1s/31250 ON
-			program_status.green_led_mode = FAST_FLASHING_LED;
-			program_status.green_led_max_cycle = 7;			// alternative = 3;
-			program_status.green_led_current_cycle = program_status.green_led_max_cycle; // counter-- will be used
-			program_status.green_led_OCR1B_basis = 3906;	// alternative = 7812;
-			break;
+		// 4 Hz
+		program_status.green_led_mode			= FAST_FLASHING_LED;
+		program_status.green_led_max_cycle		= 7;
+		program_status.green_led_current_cycle	= program_status.green_led_max_cycle;
+		program_status.green_led_OCR1B_basis	= 3906;
+		break;
 		case SLOW_FLASHING_LED:
-			// 2 Hz, 1 cycle: 0 -> .5s/15625 ticks OFF, -> 1s/31250 ticks ON 
-			program_status.green_led_mode = SLOW_FLASHING_LED;
-			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 15625;
-			break;
-		case HEARTBEAT_LED:		
-			// 1 cycle: 0 -> .9s/28125 ticks OFF, -> 1s/31250 ticks ON
-			program_status.green_led_mode = HEARTBEAT_LED;
-			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 28125;
-			break;
+		// 1 Hz
+		program_status.green_led_mode = SLOW_FLASHING_LED;
+		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+		program_status.green_led_OCR1B_basis = 15625;
+		break;
+		case HEARTBEAT_LED:
+		// 1 cycle: 0 -> .9s/28125 ticks OFF, -> 1s/31250 ticks ON
+		program_status.green_led_mode = HEARTBEAT_LED;
+		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+		program_status.green_led_OCR1B_basis = 28125;
+		break;
 		case SHORT_HEARTBEAT_LED:
-			// just blink very short...
-			program_status.green_led_mode = SHORT_HEARTBEAT_LED;
-			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 30800;
-			break;
-		default: 
-			break;		
+		// just blink very short...
+		program_status.green_led_mode = SHORT_HEARTBEAT_LED;
+		// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
+		program_status.green_led_OCR1B_basis = 30800;
+		break;
+		default:
+		break;
 	}
 	
-	restart_timer1();		// prepare timer1 config for green led, in particular, and clear TCNT1	
+	restart_timer1();
 
 	return;
 }
 
 void read_permanent_config_params()
 {
-	uint8_t local_config_params_from_ee[CONFIG_NR_CYCLES+1];
+	uint8_t local_config_params_from_ee[NUM_CONFIG_PARAMS];
 	
-	// read data from EEPROM to local variable
 	eeprom_read_block( (void*) local_config_params_from_ee, (const void*) config_params_ee, CONFIG_NR_CYCLES+1 );
 	
 	if (local_config_params_from_ee[0] == 0xFF){
-		// for any unknown reason, EEPROM not initialized yet, so take program configuration settings
-		program_status.config_params[CONFIG_INTERVAL_CNT]		= 1;	// set 1x15sec interval
-		program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE] = 4;	// set 4xINT = 1min ACTIVE
-		program_status.config_params[CONFIG_NR_INTERVAL_REST]	= 4;	// set 4xINT = 1min REST
+		// for any unknown reason, EEPROM not initialized
+		program_status.config_params[CONFIG_INTERVAL_CNT]		= 1;	// set X * 15sec interval
+		program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE] = 4;	// set X * INT
+		program_status.config_params[CONFIG_NR_INTERVAL_REST]	= 4;	// set X * INT
 		program_status.config_params[CONFIG_NR_CYCLES]			= 3;	// repeat endlessly
-	} else {
-		// unrolled loop, copy content from local variable to program_status.config_params 
+		} else {
 		program_status.config_params[CONFIG_INTERVAL_CNT]		= local_config_params_from_ee[CONFIG_INTERVAL_CNT];
 		program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE] = local_config_params_from_ee[CONFIG_NR_INTERVAL_ACTIVE];
 		program_status.config_params[CONFIG_NR_INTERVAL_REST]	= local_config_params_from_ee[CONFIG_NR_INTERVAL_REST];
 		program_status.config_params[CONFIG_NR_CYCLES]			= local_config_params_from_ee[CONFIG_NR_CYCLES];
-	};
+	}
 	
 	return;
 }
