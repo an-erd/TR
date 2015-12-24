@@ -39,20 +39,9 @@ uint8_t EEMEM config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};		// store con
 
 // global variables
 volatile sGlobalStatus program_status = {
-	.phase = PHASE_RESET,
-	.current_led_step = 0,
-	.counter_active = 0, 
-	.counter_rest = 0,
-	.PINChistory = 0x00,
-	.T1.counter_high_in_a_row = SWITCH_PRELOAD,
-	.T1.temp_state_button_pressed = 0,
-	.T1.temp_wait_for_button_release = 0,
-	.T2.counter_high_in_a_row = SWITCH_PRELOAD,
-	.T2.temp_state_button_pressed = 0,
-	.T2.temp_wait_for_button_release = 0,
-	.T3.counter_high_in_a_row = SWITCH_PRELOAD,
-	.T3.temp_state_button_pressed = 0,
-	.T3.temp_wait_for_button_release = 0,
+	.phase				= PHASE_RESET,
+	.current_led_step	= 0,
+	.buttons			= { {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,}, {SWITCH_PRELOAD, 0, 0, 0,},},
 	.green_led_mode = LED_OFF,
 	.green_led_max_cycle = 0,
 	.green_led_current_cycle = 0,
@@ -60,7 +49,8 @@ volatile sGlobalStatus program_status = {
 	.orange_led_counter = ORANGE_LED_EFFECT_DELAY,	// delay when to update orange leds during effect
 	.orange_led_current_step = 0,					// updated in ISR, etc. (decrease)
 	.orange_led_max_step = ORANGE_LED_EFFECT_STEPS,	// const
-	.orange_led_period = 0							// set to 1 to start, an reload with ORANGE_LED_EFFECT_PERIOD 
+	.orange_led_period = 0,							// set to 1 to start, an reload with ORANGE_LED_EFFECT_PERIOD 
+	.PINChistory = 0x00,
 };
 
 ISR ( TIMER0_COMPA_vect )
@@ -82,41 +72,39 @@ ISR ( TIMER0_COMPA_vect )
 	//		a1)	-> do: reset counter, and clear the "wait for release" bit
 	//		a2) -> else: (if not "waiting for release", inc in-a-row-counter and
 	//			if threshold reached -> set the "button pressed" flag
-	if ( !program_status.T1.temp_state_button_pressed ) {
-		program_status.T1.counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
-		program_status.T1.temp_wait_for_button_release = 0;		
+	if ( !program_status.buttons[0].temp_state_button_pressed ) {
+		program_status.buttons[0].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
+		program_status.buttons[0].temp_wait_for_button_release = 0;		
 	} else {
-		if (! program_status.T1.temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
-			if ( ++program_status.T1.counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.T1.button_pressed = 1;					// button pressed and stable, debounce interval gone
-				program_status.T1.temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
-				program_status.T1.counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
+		if (! program_status.buttons[0].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
+			if ( ++program_status.buttons[0].counter_high_in_a_row == SWITCH_COMPARE ){
+				program_status.buttons[0].button_pressed = 1;					// button pressed and stable, debounce interval gone
+				program_status.buttons[0].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
+				program_status.buttons[0].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
 			}
 		}
 	}
-
-	if ( !program_status.T2.temp_state_button_pressed ) {
-		program_status.T2.counter_high_in_a_row = SWITCH_PRELOAD;
-		program_status.T2.temp_wait_for_button_release = 0;		
+	if ( !program_status.buttons[1].temp_state_button_pressed ) {
+		program_status.buttons[1].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
+		program_status.buttons[1].temp_wait_for_button_release = 0;		
 	} else {
-		if (! program_status.T2.temp_wait_for_button_release) {
-			if ( ++program_status.T2.counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.T2.button_pressed = 1;
-				program_status.T2.temp_wait_for_button_release = 1;
-				program_status.T2.counter_high_in_a_row = 0;
+		if (! program_status.buttons[1].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
+			if ( ++program_status.buttons[1].counter_high_in_a_row == SWITCH_COMPARE ){
+				program_status.buttons[1].button_pressed = 1;					// button pressed and stable, debounce interval gone
+				program_status.buttons[1].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
+				program_status.buttons[1].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
 			}
 		}
 	}
-
-	if ( !program_status.T3.temp_state_button_pressed ) {
-		program_status.T3.counter_high_in_a_row = SWITCH_PRELOAD;
-		program_status.T3.temp_wait_for_button_release = 0;		
+	if ( !program_status.buttons[2].temp_state_button_pressed ) {
+		program_status.buttons[2].counter_high_in_a_row = SWITCH_PRELOAD;	// no button pressed, counter = SWITCH_PRELOAD -> nothing more to do
+		program_status.buttons[2].temp_wait_for_button_release = 0;		
 	} else {
-		if (! program_status.T3.temp_wait_for_button_release) {
-			if ( ++program_status.T3.counter_high_in_a_row == SWITCH_COMPARE ){
-				program_status.T3.button_pressed = 1;
-				program_status.T3.temp_wait_for_button_release = 1;
-				program_status.T3.counter_high_in_a_row = 0;
+		if (! program_status.buttons[2].temp_wait_for_button_release) {		// deactivate auto repeat for the moment	TODO!
+			if ( ++program_status.buttons[2].counter_high_in_a_row == SWITCH_COMPARE ){
+				program_status.buttons[2].button_pressed = 1;					// button pressed and stable, debounce interval gone
+				program_status.buttons[2].temp_wait_for_button_release = 1;		// deactivate auto repeat for the moment	TODO!
+				program_status.buttons[2].counter_high_in_a_row = 0;			// start from 0 to get SWITCH_COMPARE ms until next button pressed event (auto repeat)
 			}
 		}
 	}
@@ -241,13 +229,13 @@ ISR ( PCINT1_vect )
 	program_status.PINChistory = PINC;
 
 	if(changedbits & (1 << PINC0))
-		program_status.T1.temp_state_button_pressed = !(PINC & (1 << PINC0));	// PINC0 chanced
+		program_status.buttons[0].temp_state_button_pressed = !(PINC & (1 << PINC0));	// PINC0 chanced
 	
 	if(changedbits & (1 << PINC1))
-		program_status.T2.temp_state_button_pressed = !(PINC & (1 << PINC1));	// PINC1 chanced
+		program_status.buttons[1].temp_state_button_pressed = !(PINC & (1 << PINC1));	// PINC1 chanced
 
 	if(changedbits & (1 << PINC2))
-		program_status.T3.temp_state_button_pressed = !(PINC & (1 << PINC2));	// PINC2 chanced
+		program_status.buttons[2].temp_state_button_pressed = !(PINC & (1 << PINC2));	// PINC2 chanced
 }
 
 void init_global_vars(void)
@@ -418,10 +406,10 @@ void perform_phase_config(void)
 		PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
 				
 		// T2 for next config param, T3 for leave configuration and GO!
-		while (! program_status.T2.button_pressed && ! program_status.T3.button_pressed)
+		while (! program_status.buttons[1].button_pressed && ! program_status.buttons[2].button_pressed)
 		{
-			if (program_status.T1.button_pressed){
-				program_status.T1.button_pressed = 0;
+			if (program_status.buttons[0].button_pressed){
+				program_status.buttons[0].button_pressed = 0;
 			
 				// increase counter and do wraparound, if necessary
 				tmp_config_value++;
@@ -435,17 +423,17 @@ void perform_phase_config(void)
 		
 		// T2 oder T3 has been pressed
 		program_status.config_params[loop_counter] = tmp_config_value;	// store value back to config vector
-		if (program_status.T2.button_pressed)
+		if (program_status.buttons[1].button_pressed)
 		{
 			// T2 hit -> next configuration parameter, and wraparound
-			program_status.T2.button_pressed = 0;
+			program_status.buttons[1].button_pressed = 0;
 			loop_counter++;
 			loop_counter %= CONFIG_NR_CYCLES+1;		// increase loop counter MOD max value
 		} 
 		else
 		{
 			// T3 hit -> GO! with this configuration
-			program_status.T3.button_pressed = 0;
+			program_status.buttons[2].button_pressed = 0;
 			immediate_go++;
 		}
 		
@@ -581,21 +569,21 @@ void perform_phase_training(void)
 					// orange leds showing training mode -> update through timer1/A regularly
 
 					// if button T1 pressed -> do nothing 
-					if (program_status.T1.button_pressed){
-						program_status.T1.button_pressed = 0;
+					if (program_status.buttons[0].button_pressed){
+						program_status.buttons[0].button_pressed = 0;
 					}
 		
 					
 					// if button T2 pressed -> stop training, and go back to config phase
-					if (program_status.T2.button_pressed)
+					if (program_status.buttons[1].button_pressed)
 					{
-						program_status.T2.button_pressed = 0;
+						program_status.buttons[1].button_pressed = 0;
 						exit_training_immediately = 1;
 					}
 						
 					// if button T3 pressed -> toggle PAUSE mode
-					if (program_status.T3.button_pressed){
-						program_status.T3.button_pressed = 0;
+					if (program_status.buttons[2].button_pressed){
+						program_status.buttons[2].button_pressed = 0;
 						
 						if (program_status.phase & (1 << PHASE_TRAINING))
 						{
@@ -682,17 +670,17 @@ int main(void)
 		do 
 		{
 			// just wait for a key pressed
-		} while ( !program_status.T1.button_pressed && !program_status.T2.button_pressed 
-			&& !program_status.T3.button_pressed);
+		} while ( !program_status.buttons[0].button_pressed && !program_status.buttons[1].button_pressed 
+			&& !program_status.buttons[2].button_pressed);
 		
 		// button T1 -> do nothing 
-		if (program_status.T1.button_pressed){
-			program_status.T1.button_pressed = 0;
+		if (program_status.buttons[0].button_pressed){
+			program_status.buttons[0].button_pressed = 0;
 		}
 		
 		// button T2 -> config
-		if (program_status.T2.button_pressed){
-			program_status.T2.button_pressed = 0;
+		if (program_status.buttons[1].button_pressed){
+			program_status.buttons[1].button_pressed = 0;
 			
 			// Configuration
 			perform_phase_config();				// user configuration
@@ -703,8 +691,8 @@ int main(void)
 		}
 
 		// button T3 -> training
-		if (program_status.T3.button_pressed){
-			program_status.T3.button_pressed = 0;
+		if (program_status.buttons[2].button_pressed){
+			program_status.buttons[2].button_pressed = 0;
 			
 			go_to_training_next = 1;
 		}
