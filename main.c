@@ -393,6 +393,8 @@ void perform_phase_config(void)
 	uint8_t immediate_go = 0;
 	uint8_t loop_counter = 0;
 	uint8_t tmp_config_value = 0;
+
+	const uint8_t	config_params_min_max[NUM_CONFIG_PARAMS][2] = {{1,5},{1,5},{1,5},{0,5}};
 	
 	program_status.phase = (1 << PHASE_CONFIG);		// set phase to CONFIG, no "|" necessary, just set
 	set_green_led_mode(FAST_FLASHING_LED);			// green led flashing fast -> configuration mode

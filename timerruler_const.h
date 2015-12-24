@@ -8,7 +8,7 @@
 #ifndef _TIMER_RULER_CONS_H_
 #define _TIMER_RULER_CONS_H_
 
-#define number_led					9	// number of LEDs in the actual implementation
+#define NUM_LEDS						9	// number of LEDs in the actual implementation
 
 #define cInterval					15	// set "interval" used throughout the program to 15 seconds
 #define NUM_INTERVAL_LEDS			5	// number of LEDs for interval, and thus max. value of interval_cnt
@@ -48,6 +48,7 @@
 #define CONFIG_NR_INTERVAL_ACTIVE	1	// number of intervals in "active" phase
 #define CONFIG_NR_INTERVAL_REST		2	// number of intervals in "rest" phase
 #define CONFIG_NR_CYCLES			3	// number of cycles to perform ACT/REST phases
+#define NUM_CONFIG_PARAMS				4
 
 // debounce threshold and key repeat function
 #define DEBOUNCE_THRESHOLD			50	// if x ms button high in a row -> button pressed
