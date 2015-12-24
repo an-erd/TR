@@ -496,7 +496,7 @@ void perform_phase_config_calculation(void)
 	uint8_t temp_remainder;
 
 	// use the configured configuration values to calculate interval length, etc.
-	program_status.interval_basis_sec = cInterval * program_status.config_params[CONFIG_INTERVAL_CNT];
+	program_status.interval_basis_sec = INTERVAL_LENGTH * program_status.config_params[CONFIG_INTERVAL_CNT];
 	
 	// current steps blinks .5 Hz (on/off in 2 secs), completed steps on,
 	// orange leds PB5..7 show phase (ACTIVE: L->R, REST: R->L)
