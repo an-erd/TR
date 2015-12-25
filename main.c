@@ -34,7 +34,8 @@
 #include "timerruler_const.h"
 #include "timerruler_led.h"
 
-uint8_t EEMEM config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};
+uint8_t EEMEM				config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};
+volatile static	uint8_t		PINChistory = 0x00;
 
 // global variables
 volatile sGlobalStatus program_status = {
@@ -49,7 +50,6 @@ volatile sGlobalStatus program_status = {
 	.orange_led_current_step	= 0,
 	.orange_led_max_step		= ORANGE_LED_EFFECT_STEPS,
 	.orange_led_period			= 0,
-	.PINChistory				= 0x00,
 };
 
 ISR ( TIMER0_COMPA_vect )
@@ -174,8 +174,8 @@ ISR ( PCINT1_vect )
 	// results are evaluated (in particular, debouncing) in ISR (TIMER0_COMPA_vect), 
 	// and used throughout the program by program_status.Tx.button_pressed, which then need to be cleared again
 	
-	changedbits = PINC ^ program_status.PINChistory;
-	program_status.PINChistory = PINC;
+	changedbits = PINC ^ PINChistory;
+	PINChistory = PINC;
 
 	if(changedbits & BIT(PINC0)){
 		program_status.buttons[0].temp_state_button_pressed = !(PINC & BIT(PINC0));
@@ -205,7 +205,7 @@ void init_io_pins(void)
 	PCICR  |= BIT(PCIE1);									// pin change interrupt enable
 	PCMSK1 |= ( BIT(PCINT8) | BIT(PCINT9) | BIT(PCINT10) );	// Enable pin change detection
 
-	program_status.PINChistory = PINC;
+	PINChistory = PINC;
 	
 	return;	
 }
@@ -479,7 +479,6 @@ void perform_phase_training(void)
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
 				program_status.backward_counter_sec_to_go = 
 					program_status.led_steps_threshold[(program_status.current_led_step ? 1 : 0)][in_cycle_steps_done];
-				
 
 				bit_set(PORTD, ledArrayRedCascade_LR[program_status.current_led_step]);
 

@@ -21,17 +21,16 @@ typedef struct
 typedef struct
 {
 	uint8_t			phase;								// see defines for PHASE_CONFIG, ...
-	
-	uint8_t			config_params[NUM_CONFIG_PARAMS];	// hold the configuration params
-	uint8_t			interval_basis_sec;					// x sec / interval (calculated)
-	uint8_t			led_steps_threshold[2][2];			// 5 red leds threshold values for ACTIVE/REST phase,  resp. (calculated)
-														// ... [0] for step 1..4, [1] for step 5, and threshold[0..1][0=ACTIVE/1=REST]
+	uint8_t			config_params[NUM_CONFIG_PARAMS];
+	SButtonControl	buttons[NUM_SWITCHES];				// button debounce
+
+	// training counter
 	uint8_t			current_led_step;					// current step 1-5 of training interval
 	uint8_t			backward_counter_sec_to_go;			// sec backward counter to complete step
 	
-	SButtonControl	buttons[NUM_SWITCHES];
-	
 	// current LED mode
+	uint8_t			led_steps_threshold[2][2];			// 5 red leds threshold values for ACTIVE/REST phase,  resp. (calculated)
+														// ... [0] for step 1..4, [1] for step 5, and threshold[0..1][0=ACTIVE/1=REST]
 	uint8_t			green_led_mode;						// slow/fast flashing or heartbeat mode (ISR)
 	uint8_t			green_led_max_cycle;				// divide 1s by number of max_cycle
 	uint8_t			green_led_current_cycle;			// repeat until current_cycle == max_cycle
@@ -43,7 +42,10 @@ typedef struct
 	uint8_t			orange_led_max_step;
 	uint8_t			orange_led_period;					// time period in seconds until next effect
 
-	uint8_t			PINChistory;
+	// power optimization
+	uint16_t		backward_counter_sec_to_deep_sleep;
+
+	
 } sGlobalStatus;
 
 #endif 
