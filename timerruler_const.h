@@ -8,9 +8,9 @@
 #ifndef _TIMER_RULER_CONS_H_
 #define _TIMER_RULER_CONS_H_
 
-#define NUM_LEDS						9	// number of LEDs in the actual implementation
-#define NUM_INTERVAL_LEDS				5	// number of LEDs for interval, and thus max. value of interval_cnt
-#define INTERVAL_LENGTH					15	// set "interval" used throughout the program to 15 seconds
+#define NUM_LEDS						9
+#define NUM_INTERVAL_LEDS				5
+#define INTERVAL_LENGTH					15
 
 // power saving mode wait this time in seconds go go to deep sleep
 #define DEEP_SLEEP_SEC_MAINPROG			5
@@ -28,9 +28,9 @@
 #define LED9							8
 
 // orange led effect configuration (during training)
-#define ORANGE_LED_EFFECT_STEPS		5	// number of steps for orange led effect
-#define ORANGE_LED_EFFECT_DELAY		80	// 100ms for effect delay between steps
-#define ORANGE_LED_EFFECT_PERIOD 	3	// perform orange led effect every x seconds
+#define ORANGE_LED_EFFECT_STEPS			5
+#define ORANGE_LED_EFFECT_DELAY			80	// effect delay in ms between steps
+#define ORANGE_LED_EFFECT_PERIOD 		3
 
 // define bit mask for all available and specific LEDs on PORTB and PORTD
 #define LED_PORTB						0x02
