@@ -39,17 +39,18 @@ volatile static	uint8_t		PINChistory = 0x00;
 
 // global variables
 volatile sGlobalStatus program_status = {
-	.phase						= PHASE_RESET,
-	.current_led_step			= 0,
-	.buttons					= {{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},},
-	.green_led_mode				= LED_OFF,
-	.green_led_max_cycle		= 0,
-	.green_led_current_cycle	= 0,
-	.green_led_OCR1B_basis		= 0,
-	.orange_led_counter			= ORANGE_LED_EFFECT_DELAY,
-	.orange_led_current_step	= 0,
-	.orange_led_max_step		= ORANGE_LED_EFFECT_STEPS,
-	.orange_led_period			= 0,
+	.phase							= PHASE_RESET,
+	.current_led_step				= 0,
+	.buttons						= {{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},},
+	.green_led_mode					= LED_OFF,
+	.green_led_max_cycle			= 0,
+	.green_led_current_cycle		= 0,
+	.green_led_OCR1B_basis			= 0,
+	.orange_led_counter				= ORANGE_LED_EFFECT_DELAY,
+	.orange_led_current_step		= 0,
+	.orange_led_max_step			= ORANGE_LED_EFFECT_STEPS,
+	.orange_led_period				= 0,
+	.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_MAINPROG,
 };
 
 ISR ( TIMER0_COMPA_vect )
@@ -133,6 +134,10 @@ ISR ( TIMER1_COMPA_vect )
 			program_status.orange_led_current_step = program_status.orange_led_max_step;
 			program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
 		}
+	}
+			
+	if ( program_status.phase & (BIT(PHASE_MAINPROG)|BIT(PHASE_CONFIG)|BIT(PHASE_PAUSE))){
+		--program_status.backward_cnt_sec_to_deep_sleep;
 	}
 }
 
@@ -293,6 +298,54 @@ void set_green_led_mode(uint8_t led_mode)
 	return;
 }
 
+void enable_ppr(void)
+{
+	power_adc_disable();				// Analog to Digital Converter module
+	power_spi_disable();				// Serial Peripheral Interface module
+	power_timer0_enable();				// timer0 module
+	power_timer1_enable();				// timer1 module
+	power_timer2_disable();				// timer2 module
+	power_twi_disable();				// Two Wire Interface module
+	power_usart0_disable();				// USART module
+	
+	// Run the processor at a lower frequency
+	// Run the processor at a lower voltage
+	// Turn off brownout detection
+	// Turn off the watchdog timer
+	
+	return;
+}
+
+void touch_deep_sleep_counter(void)
+{
+	if(bit_get(program_status.phase, BIT(PHASE_MAINPROG))){
+		program_status.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_MAINPROG;
+	} else if(bit_get(program_status.phase, BIT(PHASE_CONFIG))){
+		program_status.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_CONFIG;
+	} else if(bit_get(program_status.phase, BIT(PHASE_PAUSE))){
+		program_status.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_TRAINING_PAUSE;
+	}
+	
+	return;
+}
+
+void go_to_appropriate_sleep_mode(void)
+{
+	sleep_bod_disable();
+	sleep_mode();
+	if (! program_status.backward_cnt_sec_to_deep_sleep){
+		volatile uint8_t preserve_PIND = PIND;
+		bit_clear(PORTD, LED_PORTD);
+		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+		sleep_bod_disable();
+		sleep_mode();
+		set_sleep_mode(SLEEP_MODE_IDLE);
+		PIND = preserve_PIND;
+		touch_deep_sleep_counter();
+	}
+}
+
+
 void read_permanent_config_params()
 {
 	uint8_t local_config_params_from_ee[NUM_CONFIG_PARAMS];
@@ -349,29 +402,30 @@ void perform_phase_config(void)
 	//					(red leds show counter 1-5, orange leds 1, 2 or all 3 are on)
 	do {
 		tmp_config_value = program_status.config_params[loop_counter];
-		
-		// update leds: PORTD = red 1..5 according to counter & orange 1..3 according to loop counter
 		PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
-				
-		// T2 for next config param, T3 for leave configuration and GO!
-		while (! program_status.buttons[1].button_pressed && ! program_status.buttons[2].button_pressed){
-			if (program_status.buttons[0].button_pressed){
-				program_status.buttons[0].button_pressed = 0;
-				tmp_config_value++;
-				if (tmp_config_value > config_params_min_max[loop_counter][1]){
-					tmp_config_value = config_params_min_max[loop_counter][0];
-				}
-				PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
-			}
+		touch_deep_sleep_counter();		
+		
+		// wait for key pressed
+		while (! program_status.buttons[0].button_pressed && ! program_status.buttons[1].button_pressed
+			&& !  program_status.buttons[2].button_pressed ){
+			go_to_appropriate_sleep_mode();
 		}
 		
-		// T2 oder T3 has been pressed
-		program_status.config_params[loop_counter] = tmp_config_value;	// store value back to config vector
+		if (program_status.buttons[0].button_pressed){
+			program_status.buttons[0].button_pressed = 0;
+			tmp_config_value++;
+			if (tmp_config_value > config_params_min_max[loop_counter][1]){
+				tmp_config_value = config_params_min_max[loop_counter][0];
+			}
+			PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
+		}
+		
+		program_status.config_params[loop_counter] = tmp_config_value;	// write config back
 		if (program_status.buttons[1].button_pressed){
 			// T2 hit -> next configuration parameter, and wraparound
 			program_status.buttons[1].button_pressed = 0;
 			loop_counter++;
-			loop_counter %= NUM_CONFIG_PARAMS;		// increase loop counter MOD max value
+			loop_counter %= NUM_CONFIG_PARAMS;
 		} else {
 			// T3 hit -> GO! with this configuration
 			program_status.buttons[2].button_pressed = 0;
@@ -435,10 +489,9 @@ void perform_phase_training(void)
 	program_status.phase &= ~BIT(PHASE_MAINPROG);
 	program_status.phase |=  BIT(PHASE_TRAINING);
 	
-	// prepare green and orange leds
-	set_green_led_mode(HEARTBEAT_LED);								// green led heartbeat mode -> training phase
- 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;	// start orange led after defined period
- 	program_status.orange_led_current_step = 0;						// was: program_status.orange_led_max_step;
+	set_green_led_mode(HEARTBEAT_LED);
+ 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
+ 	program_status.orange_led_current_step = 0;
 
 	// The training routine is essentially a loop using the same code to perform ACTIVE and REST phases, i.e.
 	//
@@ -479,13 +532,13 @@ void perform_phase_training(void)
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
 				program_status.backward_counter_sec_to_go = 
 					program_status.led_steps_threshold[(program_status.current_led_step ? 1 : 0)][in_cycle_steps_done];
-
 				bit_set(PORTD, ledArrayRedCascade_LR[program_status.current_led_step]);
-
+				touch_deep_sleep_counter();
 				do { 
 					// wait for timer run-down...
 					// red solid, flashing and off -> update through timer1/A regularly
 					// orange leds showing training mode -> update through timer1/A regularly
+					go_to_appropriate_sleep_mode();
 
 					// if button T1 pressed -> do nothing 
 					if (program_status.buttons[0].button_pressed){
@@ -503,12 +556,14 @@ void perform_phase_training(void)
 						program_status.buttons[2].button_pressed = 0;
 						
 						if (program_status.phase & BIT(PHASE_TRAINING))	{
-							// switch to PAUSE, and thus decreasing .backward_counter_sec_to_go and orange leds will be stopped
+							// stop decreasing .backward_counter_sec_to_go/orange leds, but start deep sleep backward counter 
 							program_status.phase &= ~BIT(PHASE_TRAINING);
 							program_status.phase |=  BIT(PHASE_PAUSE);
+							touch_deep_sleep_counter();
 							set_green_led_mode(SLOW_FLASHING_LED);
 						} else if (program_status.phase & BIT(PHASE_PAUSE)){
-							// switch to TRAINING, thus enable decreasing .backward_counter_sec_to_go and orange leds again
+							// enable decreasing .backward_counter_sec_to_go/orange leds, but stop deep sleep backward counter 
+							// deep sleep backward counter will be stopped
 							program_status.phase &= ~BIT(PHASE_PAUSE);
 							program_status.phase |=  BIT(PHASE_TRAINING);
 							set_green_led_mode(HEARTBEAT_LED);
@@ -572,13 +627,16 @@ int main(void)
 	led_set_all(ON); _delay_ms(10); led_set_all(OFF); _delay_ms(200);
 #endif //_PRODUCTION_TEST_ROUTINE_
 
-	// prepare "wait mode" state
+	enable_ppr();						// set PRR (power reduction register)
+	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
+
 	program_status.phase = BIT(PHASE_MAINPROG);
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 
 	while (1)	{
-		do{
-			// just wait for a key pressed
+		touch_deep_sleep_counter();
+		do {
+			go_to_appropriate_sleep_mode();
 		} while ( !program_status.buttons[0].button_pressed && !program_status.buttons[1].button_pressed 
 			&& !program_status.buttons[2].button_pressed);
 		

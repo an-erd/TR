@@ -43,7 +43,7 @@ typedef struct
 	uint8_t			orange_led_period;					// time period in seconds until next effect
 
 	// power optimization
-	uint16_t		backward_counter_sec_to_deep_sleep;
+	uint16_t		backward_cnt_sec_to_deep_sleep;
 
 	
 } sGlobalStatus;
