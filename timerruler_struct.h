@@ -12,10 +12,10 @@
 
 typedef struct
 {
-	uint16_t counter_high_in_a_row;
-	uint8_t temp_state_button_pressed;
-	uint8_t temp_wait_for_button_release;
-	uint8_t button_pressed;
+	uint16_t		backward_cnt_high_in_a_row;
+	uint8_t			temp_state_button_pressed;
+	uint8_t			temp_wait_for_button_release;
+	uint8_t			button_pressed;
 } SButtonControl;
 
 typedef struct

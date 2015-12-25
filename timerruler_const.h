@@ -61,9 +61,6 @@
 #define CONFIG_NR_CYCLES				3	// number of cycles to perform ACT/REST phases
 #define NUM_CONFIG_PARAMS				4
 
-// debounce threshold and key repeat function
 #define DEBOUNCE_THRESHOLD				50	// if x ms button high in a row -> button pressed
-#define SWITCH_PRELOAD					600	// if button keeps being pressed, preload with 600 ms, so every 650ms, a "button pressed" will be reached
-#define SWITCH_COMPARE					650	// sum of DEBOUNCE_THRESHOLD+SWITCH_PRELOAD
 
 #endif
