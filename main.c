@@ -98,7 +98,6 @@ ISR ( TIMER0_COMPA_vect )
 	}
 }
 
-// Interrupt for Timer/Counter1 Compare Match A
 ISR ( TIMER1_COMPA_vect )
 {
 	// 1s gone
@@ -244,7 +243,6 @@ void restart_timer1(void)
 	TCCR1B &= ~history_TCCR1B;			// stop clock
 	TCNT1 = 0;							// reset TCNT1 counter
 
-	// prepare green led things
 	led_set(LED9, OFF);
 	OCR1B = program_status.green_led_OCR1B_basis;	// set correct OCR1B compare value
 	
@@ -344,7 +342,6 @@ void go_to_appropriate_sleep_mode(void)
 		touch_deep_sleep_counter();
 	}
 }
-
 
 void read_permanent_config_params()
 {
@@ -469,13 +466,13 @@ void perform_phase_config_calculation(void)
 		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
 	program_status.led_steps_threshold[0][0] = temp_multiplied_interval_length / 5;
 	program_status.led_steps_threshold[1][0] =
-	program_status.led_steps_threshold[0][0] + temp_multiplied_interval_length % 5;
+		program_status.led_steps_threshold[0][0] + temp_multiplied_interval_length % 5;
 	// for REST phase:
 	temp_multiplied_interval_length =
 		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_REST];
 	program_status.led_steps_threshold[0][1] = temp_multiplied_interval_length / 5;
 	program_status.led_steps_threshold[1][1] =
-	program_status.led_steps_threshold[0][1] + temp_multiplied_interval_length % 5;
+		program_status.led_steps_threshold[0][1] + temp_multiplied_interval_length % 5;
 	
 	return;
 }
@@ -507,7 +504,6 @@ void perform_phase_training(void)
 	//				while (backward counter > 0)
 	//		while (in_cycle_counter < 2)
 	// while (! all cycles completed, or repeat endlessly)
-	
 	do { 
 		cycle_counter++;
 		in_cycle_steps_done = 0;
@@ -521,7 +517,6 @@ void perform_phase_training(void)
 			//	a) update red leds (PD0..4) for in-phase progress regularly
 			//	b) update orange leds (PD5..7) for training phase ACTIVE (L->R)/REST (R->L)
 			//	c) green led stays in heartbeat mode
-			
 			bit_clear(PORTD, LED_PORTD_RED);
 
 			// fire cascade LR or RL, respectively, to start ACTIVE or REST phase
