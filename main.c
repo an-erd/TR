@@ -329,20 +329,22 @@ void touch_deep_sleep_counter(void)
 	return;
 }
 
-void deep_sleep_mode(void)
+void go_to_appropriate_sleep_mode(void)
 {
-	volatile uint8_t preserve_PIND = PIND;
-	
-	bit_clear(PORTD, LED_PORTD);
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 	sleep_bod_disable();
 	sleep_mode();
-	set_sleep_mode(SLEEP_MODE_IDLE);
-	PIND = preserve_PIND;
-	touch_deep_sleep_counter();
-
-	return;
+	if (! program_status.backward_cnt_sec_to_deep_sleep){
+		volatile uint8_t preserve_PIND = PIND;
+		bit_clear(PORTD, LED_PORTD);
+		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+		sleep_bod_disable();
+		sleep_mode();
+		set_sleep_mode(SLEEP_MODE_IDLE);
+		PIND = preserve_PIND;
+		touch_deep_sleep_counter();
+	}
 }
+
 
 void read_permanent_config_params()
 {
@@ -406,11 +408,7 @@ void perform_phase_config(void)
 		// wait for key pressed
 		while (! program_status.buttons[0].button_pressed && ! program_status.buttons[1].button_pressed
 			&& !  program_status.buttons[2].button_pressed ){
-			sleep_bod_disable();
-			sleep_mode();
-			if (! program_status.backward_cnt_sec_to_deep_sleep){
-				deep_sleep_mode();
-			}
+			go_to_appropriate_sleep_mode();
 		}
 		
 		if (program_status.buttons[0].button_pressed){
@@ -491,10 +489,9 @@ void perform_phase_training(void)
 	program_status.phase &= ~BIT(PHASE_MAINPROG);
 	program_status.phase |=  BIT(PHASE_TRAINING);
 	
-	// prepare green and orange leds
-	set_green_led_mode(HEARTBEAT_LED);								// green led heartbeat mode -> training phase
- 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;	// start orange led after defined period
- 	program_status.orange_led_current_step = 0;						// was: program_status.orange_led_max_step;
+	set_green_led_mode(HEARTBEAT_LED);
+ 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
+ 	program_status.orange_led_current_step = 0;
 
 	// The training routine is essentially a loop using the same code to perform ACTIVE and REST phases, i.e.
 	//
@@ -535,13 +532,13 @@ void perform_phase_training(void)
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
 				program_status.backward_counter_sec_to_go = 
 					program_status.led_steps_threshold[(program_status.current_led_step ? 1 : 0)][in_cycle_steps_done];
-
 				bit_set(PORTD, ledArrayRedCascade_LR[program_status.current_led_step]);
-
+				touch_deep_sleep_counter();
 				do { 
 					// wait for timer run-down...
 					// red solid, flashing and off -> update through timer1/A regularly
 					// orange leds showing training mode -> update through timer1/A regularly
+					go_to_appropriate_sleep_mode();
 
 					// if button T1 pressed -> do nothing 
 					if (program_status.buttons[0].button_pressed){
@@ -559,12 +556,14 @@ void perform_phase_training(void)
 						program_status.buttons[2].button_pressed = 0;
 						
 						if (program_status.phase & BIT(PHASE_TRAINING))	{
-							// switch to PAUSE, and thus decreasing .backward_counter_sec_to_go and orange leds will be stopped
+							// stop decreasing .backward_counter_sec_to_go/orange leds, but start deep sleep backward counter 
 							program_status.phase &= ~BIT(PHASE_TRAINING);
 							program_status.phase |=  BIT(PHASE_PAUSE);
+							touch_deep_sleep_counter();
 							set_green_led_mode(SLOW_FLASHING_LED);
 						} else if (program_status.phase & BIT(PHASE_PAUSE)){
-							// switch to TRAINING, thus enable decreasing .backward_counter_sec_to_go and orange leds again
+							// enable decreasing .backward_counter_sec_to_go/orange leds, but stop deep sleep backward counter 
+							// deep sleep backward counter will be stopped
 							program_status.phase &= ~BIT(PHASE_PAUSE);
 							program_status.phase |=  BIT(PHASE_TRAINING);
 							set_green_led_mode(HEARTBEAT_LED);
@@ -637,11 +636,7 @@ int main(void)
 	while (1)	{
 		touch_deep_sleep_counter();
 		do {
- 			sleep_bod_disable();
- 			sleep_mode();
-			if (! program_status.backward_cnt_sec_to_deep_sleep){
-				deep_sleep_mode();
- 			}
+			go_to_appropriate_sleep_mode();
 		} while ( !program_status.buttons[0].button_pressed && !program_status.buttons[1].button_pressed 
 			&& !program_status.buttons[2].button_pressed);
 		
