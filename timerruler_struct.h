@@ -24,8 +24,8 @@ typedef struct
 	
 	uint8_t			config_params[NUM_CONFIG_PARAMS];	// hold the configuration params
 	uint8_t			interval_basis_sec;					// x sec / interval (calculated)
-	uint8_t			led_steps_threshold[5][2];			// 5 red leds threshold values for ACTIVE/REST phase, resp. (calculated),
-												// ...threshold[step 0..4][0=ACTIVE/1=REST]
+	uint8_t			led_steps_threshold[2][2];			// 5 red leds threshold values for ACTIVE/REST phase,  resp. (calculated)
+														// ... [0] for step 1..4, [1] for step 5, and threshold[0..1][0=ACTIVE/1=REST]
 	uint8_t			current_led_step;					// current step 1-5 of training interval
 	uint8_t			backward_counter_sec_to_go;			// sec backward counter to complete step
 	
@@ -38,7 +38,7 @@ typedef struct
 	uint16_t		green_led_OCR1B_basis;				// set for next compare: OCR1B = current_cycle * OCR1B_basis
 	
 	// orange LED effect
-	uint16_t		orange_led_counter;				// counter used in ORC0A to measure specific ms length
+	uint16_t		orange_led_counter;					// counter used in ORC0A to measure specific ms length
 	uint8_t			orange_led_current_step;			// used and increased in OCR0A, reset in OCR1A
 	uint8_t			orange_led_max_step;
 	uint8_t			orange_led_period;					// time period in seconds until next effect

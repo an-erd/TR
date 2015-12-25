@@ -403,37 +403,25 @@ void store_config_params_permanently()
 
 void perform_phase_config_calculation(void)
 {
-	uint8_t temp_multiplied_interval_length;	// calculate interval length * nr intervals for ACTIVE/REST, resp.
-	uint8_t temp_interval_length;				// calculate interval length and remainder
-	uint8_t temp_remainder;
-
-	// use the configured configuration values to calculate interval length, etc.
-	program_status.interval_basis_sec = INTERVAL_LENGTH * program_status.config_params[CONFIG_INTERVAL_CNT];
+	uint8_t const temp_interval_basis_sec = INTERVAL_LENGTH * program_status.config_params[CONFIG_INTERVAL_CNT];
+	uint8_t temp_multiplied_interval_length;
 	
 	// current steps blinks .5 Hz (on/off in 2 secs), completed steps on,
 	// orange leds PB5..7 show phase (ACTIVE: L->R, REST: R->L)
 
-	// calculation of red leds PB0..4 (L->R), unrolled loop
+	// calculation of red leds PB0..4 (L->R)
 	// for ACTIVE phase:
-	temp_multiplied_interval_length = 
-		program_status.interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
-	temp_interval_length = temp_multiplied_interval_length / 5;
-	temp_remainder       = temp_multiplied_interval_length % 5;
-	program_status.led_steps_threshold[0][0] = temp_interval_length;
-	program_status.led_steps_threshold[1][0] = temp_interval_length;
-	program_status.led_steps_threshold[2][0] = temp_interval_length;
-	program_status.led_steps_threshold[3][0] = temp_interval_length;
-	program_status.led_steps_threshold[4][0] = temp_interval_length + temp_remainder;
+	temp_multiplied_interval_length =
+		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
+	program_status.led_steps_threshold[0][0] = temp_multiplied_interval_length / 5;
+	program_status.led_steps_threshold[1][0] =
+	program_status.led_steps_threshold[0][0] + temp_multiplied_interval_length % 5;
 	// for REST phase:
-	temp_multiplied_interval_length = 
-		program_status.interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_REST];
-	temp_interval_length = temp_multiplied_interval_length / 5;
-	temp_remainder       = temp_multiplied_interval_length % 5;
-	program_status.led_steps_threshold[0][1] = temp_interval_length;
-	program_status.led_steps_threshold[1][1] = temp_interval_length;
-	program_status.led_steps_threshold[2][1] = temp_interval_length;
-	program_status.led_steps_threshold[3][1] = temp_interval_length;
-	program_status.led_steps_threshold[4][1] = temp_interval_length + temp_remainder;
+	temp_multiplied_interval_length =
+		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_REST];
+	program_status.led_steps_threshold[0][1] = temp_multiplied_interval_length / 5;
+	program_status.led_steps_threshold[1][1] =
+	program_status.led_steps_threshold[0][1] + temp_multiplied_interval_length % 5;
 	
 	return;
 }
@@ -490,9 +478,9 @@ void perform_phase_training(void)
 			for (program_status.current_led_step = 0; program_status.current_led_step < 5; program_status.current_led_step++){
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
 				program_status.backward_counter_sec_to_go = 
-					program_status.led_steps_threshold[program_status.current_led_step][in_cycle_steps_done];
+					program_status.led_steps_threshold[(program_status.current_led_step ? 1 : 0)][in_cycle_steps_done];
 				
-				// update stable red leds
+
 				bit_set(PORTD, ledArrayRedCascade_LR[program_status.current_led_step]);
 
 				do { 
