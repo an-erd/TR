@@ -1,3 +1,25 @@
+PURPOSE
+=======
+The function of TR is to have a tiny gym timer, which can give you intervals for active and rest phases during gym 
+or any other sport. Is has 4 buttons (1 reset button, and three functional buttons T1..3 ), 9 leds (5 red as a 
+progress bar, 3 orange for current phase active or rest, resp (or during config), and a green heartbeat led.)
+It is build on an ATMEL ATMEGA328P, but should work on any other similar MCU, too.
+The power is assumed to be 3V. The code is optimized for power saving, but since the leds draw a pretty high load,
+it is - by system - still consuming around XXX mA.
+
+The program flow exist of the following steps:
+- initialization (I/O pins, timer, ...)
+- configuration routine
+- training routine
+
+During the phases, to control is done with the buttons, and the leds change the mode accordingly. The specific 
+status and control is shown in the list below.
+
+The program itself makes heavy use of two timer, and pin change interrupts. The logic itself, in particular waiting 
+for a counter to run down and to give effects and progress with the leds is more or less completly delivered by the
+relevant interrupts. 
+
+
 During WAITING MODE
 ====================
 	LED PB1/green		-> slow flashing means "waiting for command"
@@ -39,6 +61,4 @@ During PAUSE
 
 TODO and optimization
 =====================
-- all led OFF / ON -> nicht mit Schleife, sondern als BIT-Operation
-- FOR Schleife statt i++ durch DO WHILE (--i) ersetzen
-- Board: Header für scl/sda sowie 6-poliger ISP durch PADS oder vias (und dann von der Rückseite kommend) ersetzen
+- none yet
