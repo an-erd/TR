@@ -415,15 +415,15 @@ void perform_phase_config(void)
 				tmp_config_value = config_params_min_max[loop_counter][0];
 			}
 			PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
-		}
-		
-		program_status.config_params[loop_counter] = tmp_config_value;	// write config back
+			program_status.config_params[loop_counter] = tmp_config_value;	// write config back
+		} 
 		if (program_status.buttons[1].button_pressed){
 			// T2 hit -> next configuration parameter, and wraparound
 			program_status.buttons[1].button_pressed = 0;
 			loop_counter++;
 			loop_counter %= NUM_CONFIG_PARAMS;
-		} else {
+		}
+		if (program_status.buttons[2].button_pressed){
 			// T3 hit -> GO! with this configuration
 			program_status.buttons[2].button_pressed = 0;
 			immediate_go++;
