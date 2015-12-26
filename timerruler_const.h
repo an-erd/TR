@@ -15,7 +15,7 @@
 // power saving mode wait this time in seconds go go to deep sleep
 #define DEEP_SLEEP_SEC_MAINPROG			15
 #define DEEP_SLEEP_SEC_CONFIG			15
-#define DEEP_SLEEP_SEC_TRAINING_PAUSE	30
+#define DEEP_SLEEP_SEC_TRAINING_PAUSE	60
 
 // modes for green led (int and not bit mode)
 #define LED_OFF							0
