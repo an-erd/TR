@@ -513,12 +513,12 @@ void perform_phase_training(void)
 				program_status.backward_counter_sec_to_go = 
 					program_status.led_steps_threshold[(program_status.current_led_step ? 0 : 1)][in_cycle_steps_done];
 				bit_set(PORTD, ledArrayRedCascade_LR[program_status.current_led_step]);
-//				touch_deep_sleep_counter();
+				touch_deep_sleep_counter();
 				do { 
 					// wait for timer run-down...
 					// red solid, flashing and off -> update through timer1/A regularly
 					// orange leds showing training mode -> update through timer1/A regularly
-//					go_to_appropriate_sleep_mode();
+					go_to_appropriate_sleep_mode();
 
 					// if button T1 pressed -> do nothing 
 					if (program_status.buttons[0].button_pressed){
@@ -607,11 +607,10 @@ int main(void)
 	led_set_all(ON); _delay_ms(10); led_set_all(OFF); _delay_ms(200);
 #endif //_PRODUCTION_TEST_ROUTINE_
 
-//	enable_ppr();						// set PRR (power reduction register)
-//	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
+	enable_ppr();						// set PRR (power reduction register)
+	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 
 	program_status.phase = BIT(PHASE_MAINPROG);
-//	led_set_all(OFF);
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 	
 	while (1)	{
