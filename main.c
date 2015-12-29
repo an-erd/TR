@@ -187,10 +187,12 @@ void init_global_vars(void)
 
 void init_io_pins(void)
 {
+	// power consumption 480 uA in IDLE mode -> 20.8 uA PWR_DOWN
 	DDRB  = BIT(DDB1);				// PB1 as output, all other as input
-	DDRC  = 0x00;					// all port C as input  (only PC0..2 used for switch T1..3, I2C (PC4, PC5) not considered yet)
+	PORTB = 0xFD;					// all input w/pull-ups
+	DDRC  = 0x00;					// all port C as input
+	PORTC = 0x7F;					// PC0..2 used for switches, but set all w/pull-ups
 	DDRD  = 0xFF;					// all port D as output (all PD0..7 used for LEDs)
-	PORTC = 0xFF;					// PC0..2 used for switches, but set all as input w/pull-up
 	
 	PCICR  |= BIT(PCIE1);									// pin change interrupt enable
 	PCMSK1 |= ( BIT(PCINT8) | BIT(PCINT9) | BIT(PCINT10) );	// Enable pin change detection
@@ -291,9 +293,6 @@ void enable_ppr(void)
 	power_timer2_disable();				// timer2 module
 	power_twi_disable();				// Two Wire Interface module
 	power_usart0_disable();				// USART module
-	
-	// Run the processor at a lower frequency
-	// Run the processor at a lower voltage
 	// Turn off brownout detection
 	// Turn off the watchdog timer
 	
@@ -598,6 +597,12 @@ int main(void)
 	// Initialization
 	init_global_vars();
 	init_io_pins();
+	
+#ifdef _ALL_LED_ON_FOR_5_SEC_
+	// to measure power consumption
+	led_set_all(ON); _delay_ms(5000);led_set_all(OFF); _delay_ms(200);
+#endif // _ALL_LED_ON_FOR_5_SEC_
+
 	init_timers();
 	wdt_disable();
 	enable_ppr();						// set PRR (power reduction register)

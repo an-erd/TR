@@ -96,3 +96,13 @@ Compiler symbols defined
 ========================
 F_CPU=1000000UL
 _PRODUCTION_TEST_ROUTINE_
+_ALL_LED_ON_FOR_5_SEC_
+
+Power consumption
+=================
+- max. power w/all 9 leds on	-> 29.53 mA (test w/symbol _ALL_LED_ON_FOR_5_SEC_ defined)
+- during sleep mode (IDLE)		-> 489 uA
+- during sleep mode (PWR_DOWN)
+	* w/BODLEVEL 1V8			-> 20.8 uA
+	* w/BODLEVEL DISABLED		-> ~0.1 uA (absolute bottom line, but because of the EEPROM use, we'll set at 1V8)
+	
