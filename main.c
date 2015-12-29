@@ -597,12 +597,6 @@ int main(void)
 	// Initialization
 	init_global_vars();
 	init_io_pins();
-	
-#ifdef _ALL_LED_ON_FOR_5_SEC_
-	// to measure power consumption
-	led_set_all(ON); _delay_ms(5000);led_set_all(OFF); _delay_ms(200);
-#endif // _ALL_LED_ON_FOR_5_SEC_
-
 	init_timers();
 	wdt_disable();
 	enable_ppr();						// set PRR (power reduction register)
@@ -612,6 +606,18 @@ int main(void)
 	// flash of all leds to check after production
 	led_set_all(ON); _delay_ms(10); led_set_all(OFF); _delay_ms(200);
 #endif //_PRODUCTION_TEST_ROUTINE_
+
+#ifdef _ALL_LED_ON_FOR_5_SEC_
+	// to measure power consumption
+// 	uint8_t temp_cnt;
+// 	led_set_all(OFF);
+// 	for (temp_cnt=0;temp_cnt<9;temp_cnt++)
+// 	{
+// 		_delay_ms(5000);
+// 		led_set(temp_cnt, ON);
+// 	}
+	led_set_all(ON); _delay_ms(5000);led_set_all(OFF); _delay_ms(200);
+#endif // _ALL_LED_ON_FOR_5_SEC_
 
 	read_permanent_config_params();
 	perform_phase_config_calculation();
