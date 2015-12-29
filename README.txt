@@ -76,7 +76,7 @@ Timer calculation/values
 
 FUSE Settings are:
 ==================
-BODLEVEL = 2V7
+BODLEVEL = 1V8
 RSTDISBL = [ ]
 DWEN = [ ]
 SPIEN = [X]
@@ -88,7 +88,7 @@ CKDIV8 = [X]
 CKOUT = [ ]
 SUT_CKSEL = EXTXOSC_8MHZ_XX_16KCK_14CK_65MS
 
-EXTENDED = 0xFD (valid)
+EXTENDED = 0xFE (valid)
 HIGH = 0xD1 (valid)
 LOW = 0x7F (valid)
 
