@@ -209,15 +209,15 @@ void init_timers(void)
 
 	// timer0
 	TCCR0A |= BIT(WGM01);						// Configure timer0 for CTC mode,
-	TCCR0B |= ( BIT(CS00) | BIT(CS01));			// Start timer @F_CPU/64
-	OCR0A = 124;								// 8 MHz, 8bit, 1/64 prescale -> 1 KHz (125 ticks / .001s=1ms
+	TCCR0B |= BIT(CS01);						// Start timer @F_CPU/8
+	OCR0A = 124;								// 8 MHz, 8bit, CKDIV8 set, 1/8 prescale -> 1 KHz (125 ticks / .001s=1ms
 	TIMSK0 |= BIT(OCIE0A);						// Enable Timer/Counter Compare Match A interrupt
 	
 	// timer1
-	TCCR1B |= ( BIT(WGM12) | BIT(CS12)); 		// Configure timer1 for CTC mode, start timer @F_CPU/256
-	OCR1A = 31249; 								// 8 MHz, 16bit, 1/256 prescale -> 1 Hz (= 31250 Ticks/ 1s)
-	OCR1B =  3124;								// and 3125 Ticks / .1s
-	TIMSK1 |= ( BIT(OCIE1A) | BIT(OCIE1B)); 	// Enable Timer/Counter Compare Match interrupt on both channel A and B
+	TCCR1B |= (BIT(WGM12)|BIT(CS11)|BIT(CS10)); // Configure timer1 for CTC mode, start timer @F_CPU/64
+	OCR1A = 15625; 								// 8 MHz, 16bit, CKDIV8 set, 1/64 prescale -> 1 Hz (= 15625 Ticks/ 1s)
+	OCR1B =  1562;								// and 1562 Ticks / .1s
+	TIMSK1 |= (BIT(OCIE1A) | BIT(OCIE1B)); 		// Enable Timer/Counter Compare Match interrupt on both channel A and B
 
 	return;
 }
@@ -253,25 +253,25 @@ void set_green_led_mode(uint8_t led_mode)
 			program_status.green_led_mode			= FAST_FLASHING_LED;
 			program_status.green_led_max_cycle		= 7;
 			program_status.green_led_current_cycle	= program_status.green_led_max_cycle;
-			program_status.green_led_OCR1B_basis	= 3906;
+			program_status.green_led_OCR1B_basis	= 1953;
 			break;
 		case SLOW_FLASHING_LED:
 			// 1 Hz
 			program_status.green_led_mode = SLOW_FLASHING_LED;
 			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 15625;
+			program_status.green_led_OCR1B_basis = 7812;
 			break;
 		case HEARTBEAT_LED:
-			// 1 cycle: 0 -> .9s/28125 ticks OFF, -> 1s/31250 ticks ON
+			// 1 cycle: 0 -> .9s OFF.1s ON
 			program_status.green_led_mode = HEARTBEAT_LED;
 			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 28125;
+			program_status.green_led_OCR1B_basis = 14062;
 			break;
 		case SHORT_HEARTBEAT_LED:
 			// just blink very short...
 			program_status.green_led_mode = SHORT_HEARTBEAT_LED;
 			// .green_led_max_cycle and .green_led_current_cycle not necessary (only one cycle)
-			program_status.green_led_OCR1B_basis = 30800;
+			program_status.green_led_OCR1B_basis = 15400;
 			break;
 		default:
 			break;

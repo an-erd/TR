@@ -62,3 +62,37 @@ During PAUSE
 TODO and optimization
 =====================
 - none yet
+
+
+Timer calculation/values
+========================
+- 8 MHz quartz, fuse CKDIV8 disabled, F_CPU=8000000UL
+- timer0: 8 MHz,  8bit, 1/64  prescale -> 1 KHz (OCR0A   125 ticks / .001s=1ms)
+- timer1: 8 MHz, 16bit, 1/256 prescale -> 1 Hz  (OCR1A 31250 Ticks / 1s, OCR1B 3125 Ticks / .1s)
+
+- 8 MHz quartz, fuse CKDIV8 set, F_CPU=1000000UL
+- timer0: @F_CPU/8, tick values stay unchanged
+- timer1: @F_CPU/64, 1 Hz: OCR1A = 15625, 10 Hz: OCR1B =  1562
+
+FUSE Settings are:
+==================
+BODLEVEL = 2V7
+RSTDISBL = [ ]
+DWEN = [ ]
+SPIEN = [X]
+WDTON = [ ]
+EESAVE = [X]
+BOOTSZ = 2048W_3800
+BOOTRST = [ ]
+CKDIV8 = [X]
+CKOUT = [ ]
+SUT_CKSEL = EXTXOSC_8MHZ_XX_16KCK_14CK_65MS
+
+EXTENDED = 0xFD (valid)
+HIGH = 0xD1 (valid)
+LOW = 0x7F (valid)
+
+Compiler symbols defined
+========================
+F_CPU=1000000UL
+_PRODUCTION_TEST_ROUTINE_
