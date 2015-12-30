@@ -602,6 +602,8 @@ int main(void)
 	enable_ppr();						// set PRR (power reduction register)
 	sei();
 
+	program_status.phase = BIT(PHASE_MAINPROG);
+	
 #ifdef _PRODUCTION_TEST_ROUTINE_
 	// flash of all leds to check after production
 	led_set_all(ON); _delay_ms(10); led_set_all(OFF); _delay_ms(200);
@@ -622,8 +624,6 @@ int main(void)
 	read_permanent_config_params();
 	perform_phase_config_calculation();
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
-
-	program_status.phase = BIT(PHASE_MAINPROG);
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 	
 	while (1)	{
