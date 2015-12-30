@@ -57,7 +57,8 @@ volatile sGlobalStatus program_status = {
 ISR ( TIMER0_COMPA_vect )
 {
 	volatile uint8_t	button_backward_cnt = NUM_SWITCHES;
-	
+	volatile uint8_t	PORTD_modified;
+		
 	// fired every 1ms gone
 
 	// button debounce mechanism for T1..3 (PC0..2)
@@ -79,6 +80,20 @@ ISR ( TIMER0_COMPA_vect )
 					program_status.buttons[button_backward_cnt].button_pressed = 1;					// debounce interval gone -> stable
 					program_status.buttons[button_backward_cnt].temp_wait_for_button_release = 1;
 				}
+			}
+		}
+	}
+		
+	// the orange led effect is done with timer0/A
+	if ( program_status.phase & BIT(PHASE_TRAINING) ){
+		if (! --program_status.orange_led_counter){
+			program_status.orange_led_counter = ORANGE_LED_EFFECT_DELAY;
+			// decrease orange step counter
+			if(program_status.orange_led_current_step--){
+				PORTD_modified = PORTD;
+				bit_clear(PORTD_modified, LED_PORTD_ORANGE);
+				bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );
+				PORTD = PORTD_modified;
 			}
 		}
 	}
