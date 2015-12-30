@@ -1,0 +1,83 @@
+
+POWER CONSUMPTION:
+==================
+
+This file give information on the power consumption. Since the major part goes into 
+the trainng phase, we'll only give information for these steps.
+
+Preconditions:
+--------------
+Power consumption measurement is done with the following preconditions:
+- breadboard device, minimal ATMEGA328P-PU w/8 MHz quartz/capacitors, 10k reset resistor
+- XXX R resistor for all leds
+- compile -O1, F_CPU=1000000UL defined, FUSE settings as in README.txt
+- sleep modes to IDLE whereever possible
+- all values are given in mA unless otherwise stated
+
+Tests and Calculations
+----------------------
+1) Test: turn on led 1..9 one-by-one, gives the following results:
+    OUTPUT      mA                diff to       avg consumption
+                                  prev. step    by color
+    ------------------------------------------------------------
+    Start       0,78 (all off) 
+    1 led       4,13 (red)        3,35          3,26* (red)
+    2 leds      7,43 (red)        3,30
+    3 leds     10,68 (red)        3,25  
+    4 leds     13,34 (red)        2,66
+    5 leds     17,06 (red)        3,72
+    6 leds     20,17 (orange)     3,11          3,04* (orange)
+    7 leds     23,20 (orange)     3,03
+    8 leds     26,18 (orange)     2,98
+    9 leds     29,09 (green)      2,91          2,91* (green)
+    IDLE        0,33-0.49* (all off) 
+
+    Values marked with (*) will be used for the calculation below.
+
+    Summary
+    -----------------------
+    1 red led       3,26 mA
+    1 orange led    3,04 mA
+    1 green led     2,91 mA
+    IDLE            0,49 mA
+
+2) Calculation
+    a) green heartbeat led: the green led is 0.9s off, 0.1s on, 
+       i.e. 10% of green led consumption above 
+       -> 0,29 mA
+    b) orange light effect: every 3s, 4 steps w/80ms each, single leds 
+       are 6 intervals of 80ms on (see array): 6*80ms for single led per 3s,
+       and so 160ms for single led per 1s 
+       -> 0,49 mA
+    c) red light shows progress bar, 5 steps each 12s (=1min):
+        0-12s:  one led blinks, 0 on        1,63 mA
+        12-24s: one led blinks, 1 on        4,88 mA
+        24-36s: one led blinks, 2 on        8,14 mA
+        36-48s: one led blinks, 3 on       11,40 mA
+        48-60s: one led blinks, 4 on       14,65 mA
+        -> 8,14 mA avg over one minute (one complete cycle)
+    d) basic consumption 
+       -> 0,49 mA
+
+3) Summary
+    OUTPUT                                  avg consumption
+    ------------------------------------------------------------
+    Green heartbeat led                     0,29 mA
+    Orange light effect                     0,49 mA
+    Red progress bar                        8,14 mA
+    Basic onsumption                        0,49 mA
+    ________________                        _______
+    SUM                                     9,41 mA
+
+4) Battery lifetime (w/9,41 mA avg. consumption)
+    CR2032, 200 mAh                         -> 21,25h
+    LiPo Akku, 400 mAh                      -> 42,50h (3,7V instead of 3V!) 
+
+Appendix:
+    Power consumption, some measurements
+    ------------------------------------
+    - max. power w/all 9 leds on	        -> 29.53 mA (test w/symbol _ALL_LED_ON_FOR_5_SEC_ defined)
+    - during sleep mode (IDLE)		        -> 489 uA
+    - during sleep mode (PWR_DOWN)
+	    * w/BODLEVEL 1V8			        -> 20.8 uA
+	    * w/BODLEVEL DISABLED		        -> ~0.1 uA (bottom line, we set to 1V8 because of EEPROM use)
