@@ -84,17 +84,16 @@ ISR ( TIMER0_COMPA_vect )
 		}
 	}
 		
-	// the orange led effect is done with timer0/A
-	if ( program_status.phase & BIT(PHASE_TRAINING) ){
+	// the orange led effect is done w/TIMER0/A, delay between effects w/TIMER1/A
+	if ( program_status.phase & BIT(PHASE_TRAINING) && program_status.orange_led_current_step ){
 		if (! --program_status.orange_led_counter){
 			program_status.orange_led_counter = ORANGE_LED_EFFECT_DELAY;
-			// decrease orange step counter
-			if(program_status.orange_led_current_step--){
-				PORTD_modified = PORTD;
-				bit_clear(PORTD_modified, LED_PORTD_ORANGE);
-				bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );
-				PORTD = PORTD_modified;
-			}
+			program_status.orange_led_current_step--;
+
+			PORTD_modified = PORTD;
+			bit_clear(PORTD_modified, LED_PORTD_ORANGE);
+			bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );	
+			PORTD = PORTD_modified;
 		}
 	}
 }
@@ -131,8 +130,8 @@ ISR ( TIMER1_COMPA_vect )
 		}
 		
 		if (! --program_status.orange_led_period) {
-			program_status.orange_led_current_step = program_status.orange_led_max_step;
 			program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
+			program_status.orange_led_current_step = program_status.orange_led_max_step;	// fire effect w/orange leds
 		}
 	}
 			
@@ -622,6 +621,11 @@ int main(void)
 	perform_phase_config_calculation();
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
+	
+// DEBUG TODO
+	if (program_status.config_params[0]+program_status.config_params[1]+program_status.config_params[2]+program_status.config_params[3] > 20){
+		led_set_all(ON); _delay_ms(2000); led_set_all(OFF); _delay_ms(200);
+	}
 	
 	while (1)	{
 		touch_deep_sleep_counter();
