@@ -622,11 +622,6 @@ int main(void)
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 	
-// DEBUG TODO
-	if (program_status.config_params[0]+program_status.config_params[1]+program_status.config_params[2]+program_status.config_params[3] > 20){
-		led_set_all(ON); _delay_ms(2000); led_set_all(OFF); _delay_ms(200);
-	}
-	
 	while (1)	{
 		touch_deep_sleep_counter();
 		do {
