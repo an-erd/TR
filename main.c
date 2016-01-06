@@ -35,7 +35,7 @@
 #include "timerruler_const.h"
 #include "timerruler_led.h"
 
-uint8_t EEMEM				config_params_ee[CONFIG_NR_CYCLES+1] = {1, 4, 4, 3};
+uint8_t						config_params_ee[NUM_CONFIG_PARAMS] EEMEM	= {1, 4, 4, 3};
 volatile static	uint8_t		PINChistory = 0x00;
 
 // global variables
@@ -345,22 +345,7 @@ void go_to_appropriate_sleep_mode(void)
 
 void read_permanent_config_params()
 {
-	uint8_t local_config_params_from_ee[NUM_CONFIG_PARAMS];
-	
-	eeprom_read_block( (void*) local_config_params_from_ee, (const void*) config_params_ee, CONFIG_NR_CYCLES+1 );
-	
-	if (local_config_params_from_ee[0] == 0xFF){
-		// for any unknown reason, EEPROM not initialized
-		program_status.config_params[CONFIG_INTERVAL_CNT]		= 1;	// set X * 15sec interval
-		program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE] = 4;	// set X * INT
-		program_status.config_params[CONFIG_NR_INTERVAL_REST]	= 4;	// set X * INT
-		program_status.config_params[CONFIG_NR_CYCLES]			= 3;	// repeat endlessly
-		} else {
-		program_status.config_params[CONFIG_INTERVAL_CNT]		= local_config_params_from_ee[CONFIG_INTERVAL_CNT];
-		program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE] = local_config_params_from_ee[CONFIG_NR_INTERVAL_ACTIVE];
-		program_status.config_params[CONFIG_NR_INTERVAL_REST]	= local_config_params_from_ee[CONFIG_NR_INTERVAL_REST];
-		program_status.config_params[CONFIG_NR_CYCLES]			= local_config_params_from_ee[CONFIG_NR_CYCLES];
-	}
+	eeprom_read_block((void*) program_status.config_params, (const void*) config_params_ee, NUM_CONFIG_PARAMS);
 	
 	return;
 }
@@ -440,14 +425,10 @@ void perform_phase_config(void)
 
 void store_config_params_permanently()
 {
-	uint8_t local_config_params_to_ee[NUM_CONFIG_PARAMS];
-	
-	local_config_params_to_ee[CONFIG_INTERVAL_CNT]			= program_status.config_params[CONFIG_INTERVAL_CNT];
-	local_config_params_to_ee[CONFIG_NR_INTERVAL_ACTIVE]	= program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
-	local_config_params_to_ee[CONFIG_NR_INTERVAL_REST]		= program_status.config_params[CONFIG_NR_INTERVAL_REST];
-	local_config_params_to_ee[CONFIG_NR_CYCLES]				= program_status.config_params[CONFIG_NR_CYCLES];
-
-	eeprom_write_block((const void*) local_config_params_to_ee, (void*) config_params_ee, CONFIG_NR_CYCLES+1 );
+	cli();
+	eeprom_busy_wait();
+	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_CONFIG_PARAMS);
+	sei();
 	
 	return;
 }
@@ -637,6 +618,7 @@ int main(void)
 #endif // _ALL_LED_ON_FOR_5_SEC_
 
 	read_permanent_config_params();
+	store_config_params_permanently();
 	perform_phase_config_calculation();
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
