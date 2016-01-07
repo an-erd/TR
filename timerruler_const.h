@@ -17,8 +17,9 @@
 #define DEEP_SLEEP_SEC_CONFIG			15
 #define DEEP_SLEEP_SEC_TRAINING_PAUSE	30
 
-// modes for green led (int and not bit mode)
+
 #define LED_OFF							0
+// modes for green led (int and not bit mode)
 #define SLOW_FLASHING_LED				1
 #define FAST_FLASHING_LED				2
 #define HEARTBEAT_LED					3
@@ -29,7 +30,6 @@
 
 // led effect 
 #define LED_EFFECT_DELAY				80	// effect delay in ms between steps
-#define LED_EFFECT_OFF					0
 #define LED_EFFECT_ORANGE_ONGOING		1
 #define LED_EFFECT_ALL_ONGOING			2
 #define ORANGE_LED_EFFECT_STEPS			5

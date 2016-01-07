@@ -324,11 +324,11 @@ void set_led_effect(const uint8_t led_effect)
 			program_status.effect_led_current_step	= 0;
 			program_status.led_effect_ongoing		= LED_EFFECT_ALL_ONGOING;
 			break;
-		case LED_EFFECT_OFF:
+		case LED_OFF:
 		default:
 			program_status.orange_led_period		= 0; 
 			program_status.effect_led_current_step	= 0;
-			program_status.led_effect_ongoing		= LED_EFFECT_OFF;
+			program_status.led_effect_ongoing		= LED_OFF;
 			break;
 	}
 	
@@ -348,6 +348,20 @@ void start_led_effect(void)
 			break;
 	}
 		
+	return;
+}
+
+void led_effect_and_wait_to_complete()
+{
+	uint8_t tmp_phase = program_status.phase;
+	
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING));
+	set_led_effect(LED_EFFECT_ALL_ONGOING);
+	start_led_effect();
+	do {} while (program_status.effect_led_current_step);
+	set_led_effect(LED_OFF);
+	program_status.phase = tmp_phase;
+	
 	return;
 }
 
@@ -515,12 +529,11 @@ void perform_phase_training(void)
 	uint8_t		in_cycle_steps_done			= 0;
 	uint8_t		exit_training_immediately	= 0;			// T2 pressed, back to config
 	
-	program_status.phase &= ~BIT(PHASE_MAINPROG);
-	program_status.phase |=  BIT(PHASE_TRAINING);
+	bit_flip(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_TRAINING));
 	
+	set_led_effect(LED_OFF);
 	set_green_led_mode(HEARTBEAT_LED);
-	set_led_effect(LED_EFFECT_OFF);
-	
+		
 	// The training routine is essentially a loop using the same code to perform ACTIVE and REST phases, i.e.
 	//
 	// do
@@ -539,8 +552,7 @@ void perform_phase_training(void)
 		cycle_counter++;
 		in_cycle_steps_done = 0;
 		
-		program_status.phase &= ~BIT(PHASE_REST);
-		program_status.phase |=  BIT(PHASE_ACTIVE);
+		bit_flip(program_status.phase, BIT(PHASE_REST)|BIT(PHASE_ACTIVE));
 		
 		do { 
 			// in-cycle 2-step loop
@@ -549,15 +561,7 @@ void perform_phase_training(void)
 			//	b) update orange leds (PD5..7) for training phase ACTIVE (L->R)/REST (R->L)
 			//	c) green led stays in heartbeat mode
 			bit_clear(PORTD, LED_PORTD_RED);
-
-			// fire cascade LR or RL, respectively, to start ACTIVE or REST phase
-			program_status.phase &= ~BIT(PHASE_TRAINING);
-			set_led_effect(LED_EFFECT_ALL_ONGOING);
-			start_led_effect();
-			do {} while (program_status.effect_led_current_step);
-			set_led_effect(LED_EFFECT_OFF);
-			program_status.phase |=  BIT(PHASE_TRAINING);
-
+			led_effect_and_wait_to_complete();
 			set_led_effect(LED_EFFECT_ORANGE_ONGOING);
 			start_led_effect();
 			
@@ -589,36 +593,28 @@ void perform_phase_training(void)
 					if (program_status.buttons[2].button_pressed){
 						program_status.buttons[2].button_pressed = 0;
 						
-						if (program_status.phase & BIT(PHASE_TRAINING))	{
+						if (bit_get(program_status.phase, BIT(PHASE_TRAINING)))	{
 							// stop decreasing .backward_counter_sec_to_go/orange leds, but start deep sleep backward counter 
-							program_status.phase &= ~BIT(PHASE_TRAINING);
-							program_status.phase |=  BIT(PHASE_PAUSE);
+							bit_flip(program_status.phase, BIT(PHASE_TRAINING)|BIT(PHASE_PAUSE));
 							touch_deep_sleep_counter();
 							set_green_led_mode(SLOW_FLASHING_LED);
 						} else if (program_status.phase & BIT(PHASE_PAUSE)){
 							// enable decreasing .backward_counter_sec_to_go/orange leds, but stop deep sleep backward counter 
 							// deep sleep backward counter will be stopped
-							program_status.phase &= ~BIT(PHASE_PAUSE);
-							program_status.phase |=  BIT(PHASE_TRAINING);
+							bit_flip(program_status.phase, BIT(PHASE_PAUSE)|BIT(PHASE_TRAINING));
 							set_green_led_mode(HEARTBEAT_LED);
 						}
 					}
 				} while (! exit_training_immediately && program_status.backward_counter_sec_to_go);		// will not be decreased in ISR if in PAUSE mode, so no problem
 			}
 			
-			program_status.phase &= ~BIT(PHASE_ACTIVE);
-			program_status.phase |=  BIT(PHASE_REST);
+			bit_flip(program_status.phase, BIT(PHASE_ACTIVE)|BIT(PHASE_REST));
 			in_cycle_steps_done++;
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
 
 		// fire cascade -> another cycle completed
 		if(!exit_training_immediately){
-			program_status.phase &= ~BIT(PHASE_TRAINING);
-			set_led_effect(LED_EFFECT_ALL_ONGOING);
-			start_led_effect();
-			do {} while (program_status.effect_led_current_step);
-			set_led_effect(LED_EFFECT_OFF);
-			program_status.phase |=  BIT(PHASE_TRAINING);
+			led_effect_and_wait_to_complete();
 		}
 		
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
@@ -629,12 +625,10 @@ void perform_phase_training(void)
 	// cleanup 
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
-	program_status.led_effect_ongoing = LED_EFFECT_OFF;
+	set_led_effect(OFF);
 
-	program_status.phase &= ~BIT(PHASE_TRAINING);
-	program_status.phase &= ~BIT(PHASE_ACTIVE);
-	program_status.phase &= ~BIT(PHASE_REST);
-	program_status.phase |=	 BIT(PHASE_MAINPROG);
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING)|BIT(PHASE_ACTIVE)|BIT(PHASE_REST));
+	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
 	
 	return;	
 }
