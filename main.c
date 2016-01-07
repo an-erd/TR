@@ -47,9 +47,9 @@ volatile sGlobalStatus program_status = {
 	.green_led_max_cycle			= 0,
 	.green_led_current_cycle		= 0,
 	.green_led_OCR1B_basis			= 0,
-	.orange_led_counter				= ORANGE_LED_EFFECT_DELAY,
-	.orange_led_current_step		= 0,
-	.orange_led_max_step			= ORANGE_LED_EFFECT_STEPS,
+	.led_effect_ongoing				= 0,
+	.effect_led_ms_counter			= LED_EFFECT_DELAY,
+	.effect_led_current_step		= 0,
 	.orange_led_period				= 0,
 	.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_MAINPROG,
 };
@@ -83,17 +83,30 @@ ISR ( TIMER0_COMPA_vect )
 			}
 		}
 	}
-		
-	// the orange led effect is done w/TIMER0/A, delay between effects w/TIMER1/A
-	if ( program_status.phase & BIT(PHASE_TRAINING) && program_status.orange_led_current_step ){
-		if (! --program_status.orange_led_counter){
-			program_status.orange_led_counter = ORANGE_LED_EFFECT_DELAY;
-			program_status.orange_led_current_step--;
 
-			PORTD_modified = PORTD;
-			bit_clear(PORTD_modified, LED_PORTD_ORANGE);
-			bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );	
-			PORTD = PORTD_modified;
+	// the led effects are done w/TIMER0/A, delay between effects w/TIMER1/A
+	if (program_status.effect_led_current_step){
+		switch (program_status.led_effect_ongoing){
+			case LED_EFFECT_ORANGE_ONGOING:
+				if(program_status.phase & BIT(PHASE_TRAINING)){
+			 		if (! --program_status.effect_led_ms_counter){
+ 						program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+		 				program_status.effect_led_current_step--;
+ 
+	 					PORTD_modified = PORTD;
+ 						bit_clear(PORTD_modified, LED_PORTD_ORANGE);
+	 					bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.effect_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );	
+ 						PORTD = PORTD_modified;
+ 					}
+ 				}
+				break;
+			case LED_EFFECT_ALL_ONGOING:
+				if (! --program_status.effect_led_ms_counter){
+					program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+					program_status.effect_led_current_step--;
+					PORTD = ledArrayAllEffect[program_status.effect_led_current_step];
+				}
+ 				break;	
 		}
 	}
 }
@@ -130,8 +143,8 @@ ISR ( TIMER1_COMPA_vect )
 		}
 		
 		if (! --program_status.orange_led_period) {
-			program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
-			program_status.orange_led_current_step = program_status.orange_led_max_step;	// fire effect w/orange leds
+			program_status.orange_led_period		= ORANGE_LED_EFFECT_PERIOD;
+			program_status.effect_led_current_step	= ORANGE_LED_EFFECT_STEPS;	// fire effect w/orange leds
 		}
 	}
 			
@@ -298,6 +311,46 @@ void set_green_led_mode(uint8_t led_mode)
 	return;
 }
 
+void set_led_effect(const uint8_t led_effect)
+{
+	switch(led_effect){
+		case LED_EFFECT_ORANGE_ONGOING:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_ORANGE_ONGOING;
+			break;
+		case LED_EFFECT_ALL_ONGOING:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_ALL_ONGOING;
+			break;
+		case LED_EFFECT_OFF:
+		default:
+			program_status.orange_led_period		= 0; 
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_OFF;
+			break;
+	}
+	
+	return;
+}
+
+void start_led_effect(void)
+{
+	switch(program_status.led_effect_ongoing){
+		case LED_EFFECT_ORANGE_ONGOING:
+			program_status.orange_led_period		= ORANGE_LED_EFFECT_PERIOD;
+			break;
+		case LED_EFFECT_ALL_ONGOING:
+			program_status.effect_led_current_step	= ALL_LED__EFFECT_STEPS;
+			break;
+		default:
+			break;
+	}
+		
+	return;
+}
+
 void enable_ppr(void)
 {
 	power_adc_disable();				// Analog to Digital Converter module
@@ -308,7 +361,6 @@ void enable_ppr(void)
 	power_twi_disable();				// Two Wire Interface module
 	power_usart0_disable();				// USART module
 	// Turn off brownout detection
-	// Turn off the watchdog timer
 	
 	return;
 }
@@ -467,9 +519,8 @@ void perform_phase_training(void)
 	program_status.phase |=  BIT(PHASE_TRAINING);
 	
 	set_green_led_mode(HEARTBEAT_LED);
- 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
- 	program_status.orange_led_current_step = 0;
-
+	set_led_effect(LED_EFFECT_OFF);
+	
 	// The training routine is essentially a loop using the same code to perform ACTIVE and REST phases, i.e.
 	//
 	// do
@@ -500,8 +551,16 @@ void perform_phase_training(void)
 			bit_clear(PORTD, LED_PORTD_RED);
 
 			// fire cascade LR or RL, respectively, to start ACTIVE or REST phase
-			// TODO 
+			program_status.phase &= ~BIT(PHASE_TRAINING);
+			set_led_effect(LED_EFFECT_ALL_ONGOING);
+			start_led_effect();
+			do {} while (program_status.effect_led_current_step);
+			set_led_effect(LED_EFFECT_OFF);
+			program_status.phase |=  BIT(PHASE_TRAINING);
 
+			set_led_effect(LED_EFFECT_ORANGE_ONGOING);
+			start_led_effect();
+			
 			// 5 leds, steps 0..4 to do, e.g., "3" means: LED0..2 on, LED3 flash, LED4 off
 			for (program_status.current_led_step = 0; program_status.current_led_step < 5; program_status.current_led_step++){
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
@@ -552,20 +611,29 @@ void perform_phase_training(void)
 			in_cycle_steps_done++;
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
 
-	// fire cascade -> another cycle completed
-	// TODO
-
+		// fire cascade -> another cycle completed
+		program_status.phase &= ~BIT(PHASE_TRAINING);
+		set_led_effect(LED_EFFECT_ALL_ONGOING);
+		start_led_effect();
+		do {} while (program_status.effect_led_current_step);
+		set_led_effect(LED_EFFECT_OFF);
+		program_status.phase |=  BIT(PHASE_TRAINING);
+		
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
 	} while ( ! exit_training_immediately 
 			&& ( (! program_status.config_params[CONFIG_NR_CYCLES])	// true, if repeat endlessly is configured
 			|| (cycle_counter < program_status.config_params[CONFIG_NR_CYCLES])));		// or all cycles completed
 
 	// fire cascade -> all cycles completed
-	// TODO
+// 	set_led_effect(LED_EFFECT_ALL_ONGOING);
+// 	start_led_effect();
+// 	do {} while (program_status.effect_led_current_step);
+// 	set_led_effect(LED_EFFECT_OFF);
 
 	// cleanup 
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
+	program_status.led_effect_ongoing = LED_EFFECT_OFF;
 
 	program_status.phase &= ~BIT(PHASE_TRAINING);
 	program_status.phase &= ~BIT(PHASE_ACTIVE);
