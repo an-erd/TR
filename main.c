@@ -551,8 +551,9 @@ void perform_phase_training(void)
 	do { 
 		cycle_counter++;
 		in_cycle_steps_done = 0;
-		
-		bit_flip(program_status.phase, BIT(PHASE_REST)|BIT(PHASE_ACTIVE));
+
+		bit_set(program_status.phase, BIT(PHASE_ACTIVE));
+		bit_clear(program_status.phase, BIT(PHASE_REST));		
 		
 		do { 
 			// in-cycle 2-step loop
