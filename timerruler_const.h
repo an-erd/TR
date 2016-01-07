@@ -32,9 +32,13 @@
 #define LED_EFFECT_DELAY				80	// effect delay in ms between steps
 #define LED_EFFECT_ORANGE_ONGOING		1
 #define LED_EFFECT_ALL_ONGOING			2
+#define LED_EFFECT_CENTER_ONGOING		3
 #define ORANGE_LED_EFFECT_STEPS			5
 #define ORANGE_LED_EFFECT_PERIOD 		3
-#define ALL_LED__EFFECT_STEPS			26
+#define ALL_LED_EFFECT_STEPS			11
+#define ALL_LED_CENTER_EFFECT_STEPS		12
+#define ALL_LED_CENTER_EFFECT_LR		0
+#define ALL_LED_CENTER_EFFECT_RL		1
 
 // define bit mask for all available and specific LEDs on PORTB and PORTD
 #define LED_PORTB						0x02

@@ -50,6 +50,7 @@ volatile sGlobalStatus program_status = {
 	.led_effect_ongoing				= 0,
 	.effect_led_ms_counter			= LED_EFFECT_DELAY,
 	.effect_led_current_step		= 0,
+	.effect_led_direction_LR		= 1,
 	.orange_led_period				= 0,
 	.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_MAINPROG,
 };
@@ -104,9 +105,18 @@ ISR ( TIMER0_COMPA_vect )
 				if (! --program_status.effect_led_ms_counter){
 					program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
 					program_status.effect_led_current_step--;
-					PORTD = ledArrayAllEffect[program_status.effect_led_current_step];
+					PORTD = ledArrayAllEffect[program_status.effect_led_current_step][program_status.effect_led_direction_LR];
 				}
  				break;	
+			case LED_EFFECT_CENTER_ONGOING:
+				if (! --program_status.effect_led_ms_counter){
+					program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+					program_status.effect_led_current_step--;
+					PORTD = ledArrayAllCenterEffect[program_status.effect_led_current_step];
+				}
+ 				break;
+			default:
+				break;
 		}
 	}
 }
@@ -324,6 +334,11 @@ void set_led_effect(const uint8_t led_effect)
 			program_status.effect_led_current_step	= 0;
 			program_status.led_effect_ongoing		= LED_EFFECT_ALL_ONGOING;
 			break;
+		case LED_EFFECT_CENTER_ONGOING:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_CENTER_ONGOING;
+			break;
 		case LED_OFF:
 		default:
 			program_status.orange_led_period		= 0; 
@@ -335,6 +350,11 @@ void set_led_effect(const uint8_t led_effect)
 	return;
 }
 
+void set_led_effect_center_direction(const uint8_t led_effect_direction)
+{
+	program_status.effect_led_direction_LR = led_effect_direction;
+}
+
 void start_led_effect(void)
 {
 	switch(program_status.led_effect_ongoing){
@@ -342,7 +362,10 @@ void start_led_effect(void)
 			program_status.orange_led_period		= ORANGE_LED_EFFECT_PERIOD;
 			break;
 		case LED_EFFECT_ALL_ONGOING:
-			program_status.effect_led_current_step	= ALL_LED__EFFECT_STEPS;
+			program_status.effect_led_current_step	= ALL_LED_EFFECT_STEPS;
+			break;
+		case LED_EFFECT_CENTER_ONGOING:
+			program_status.effect_led_current_step	= ALL_LED_CENTER_EFFECT_STEPS;
 			break;
 		default:
 			break;
@@ -351,12 +374,27 @@ void start_led_effect(void)
 	return;
 }
 
-void led_effect_and_wait_to_complete()
+void all_led_effect_and_wait_to_complete(const uint8_t led_effect_direction)
 {
 	uint8_t tmp_phase = program_status.phase;
 	
 	bit_clear(program_status.phase, BIT(PHASE_TRAINING));
 	set_led_effect(LED_EFFECT_ALL_ONGOING);
+	set_led_effect_center_direction(led_effect_direction);
+	start_led_effect();
+	do {} while (program_status.effect_led_current_step);
+	set_led_effect(LED_OFF);
+	program_status.phase = tmp_phase;
+	
+	return;
+}
+
+void center_led_effect_and_wait_to_complete(void)
+{
+	uint8_t tmp_phase = program_status.phase;
+	
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING));
+	set_led_effect(LED_EFFECT_CENTER_ONGOING);
 	start_led_effect();
 	do {} while (program_status.effect_led_current_step);
 	set_led_effect(LED_OFF);
@@ -562,7 +600,7 @@ void perform_phase_training(void)
 			//	b) update orange leds (PD5..7) for training phase ACTIVE (L->R)/REST (R->L)
 			//	c) green led stays in heartbeat mode
 			bit_clear(PORTD, LED_PORTD_RED);
-			led_effect_and_wait_to_complete();
+			all_led_effect_and_wait_to_complete(in_cycle_steps_done);
 			set_led_effect(LED_EFFECT_ORANGE_ONGOING);
 			start_led_effect();
 			
@@ -613,15 +651,18 @@ void perform_phase_training(void)
 			in_cycle_steps_done++;
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
 
-		// fire cascade -> another cycle completed
-		if(!exit_training_immediately){
-			led_effect_and_wait_to_complete();
-		}
+// 		// fire cascade -> another cycle completed
+// 		if(!exit_training_immediately){
+// 			center_led_effect_and_wait_to_complete();
+// 		}
 		
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
 	} while ( ! exit_training_immediately 
 			&& ( (! program_status.config_params[CONFIG_NR_CYCLES])	// true, if repeat endlessly is configured
 			|| (cycle_counter < program_status.config_params[CONFIG_NR_CYCLES])));		// or all cycles completed
+
+	// all cycles completed 
+	center_led_effect_and_wait_to_complete();
 
 	// cleanup 
 	set_green_led_mode(LED_OFF);
@@ -665,15 +706,19 @@ int main(void)
 
 #ifdef _ALL_LED_ON_FOR_5_SEC_
 	// to measure power consumption
-// 	uint8_t temp_cnt;
-// 	led_set_all(OFF);
-// 	for (temp_cnt=0;temp_cnt<9;temp_cnt++)
-// 	{
-// 		_delay_ms(5000);
-// 		led_set(temp_cnt, ON);
-// 	}
 	led_set_all(ON); _delay_ms(5000);led_set_all(OFF); _delay_ms(200);
 #endif // _ALL_LED_ON_FOR_5_SEC_
+
+#ifdef _INCREASE_NUM_LED_ON_
+	// to measure power consumption
+ 	uint8_t temp_cnt;
+ 	led_set_all(OFF);
+ 	for (temp_cnt=0;temp_cnt<9;temp_cnt++)
+ 	{
+ 		_delay_ms(5000);
+ 		led_set(temp_cnt, ON);
+ 	}
+#endif // _INCREASE_NUM_LED_ON_
 
 	read_permanent_config_params();
 	store_config_params_permanently();

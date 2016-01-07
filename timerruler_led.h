@@ -18,8 +18,8 @@ extern const uint8_t	ledArray[NUM_LEDS][2];						// define array for addressing 
 extern const uint8_t	ledArrayOrangeCascade_LR[4];				// fill from L->R
 extern const uint8_t	ledArrayOrangeEffect[5][2];					// effect "2 on" from L->R [][0] or rev [][1]
 extern const uint8_t	ledArrayRedCascade_LR[6];					// fill from L->R
-extern const uint8_t	ledArrayAllEffect[ALL_LED__EFFECT_STEPS];	// effect from L->R->L for all PORTD (red/orange leds)
-// define some specific LED operations
+extern const uint8_t	ledArrayAllEffect[ALL_LED_EFFECT_STEPS][2];	// effect from L->R or rev for all PORTD (red/orange leds)
+extern const uint8_t	ledArrayAllCenterEffect[ALL_LED_CENTER_EFFECT_STEPS]; // to center and back
 
 // set a specific led to given state
 void led_set (uint8_t led_nr, uint8_t led_state);
