@@ -612,23 +612,19 @@ void perform_phase_training(void)
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
 
 		// fire cascade -> another cycle completed
-		program_status.phase &= ~BIT(PHASE_TRAINING);
-		set_led_effect(LED_EFFECT_ALL_ONGOING);
-		start_led_effect();
-		do {} while (program_status.effect_led_current_step);
-		set_led_effect(LED_EFFECT_OFF);
-		program_status.phase |=  BIT(PHASE_TRAINING);
+		if(!exit_training_immediately){
+			program_status.phase &= ~BIT(PHASE_TRAINING);
+			set_led_effect(LED_EFFECT_ALL_ONGOING);
+			start_led_effect();
+			do {} while (program_status.effect_led_current_step);
+			set_led_effect(LED_EFFECT_OFF);
+			program_status.phase |=  BIT(PHASE_TRAINING);
+		}
 		
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
 	} while ( ! exit_training_immediately 
 			&& ( (! program_status.config_params[CONFIG_NR_CYCLES])	// true, if repeat endlessly is configured
 			|| (cycle_counter < program_status.config_params[CONFIG_NR_CYCLES])));		// or all cycles completed
-
-	// fire cascade -> all cycles completed
-// 	set_led_effect(LED_EFFECT_ALL_ONGOING);
-// 	start_led_effect();
-// 	do {} while (program_status.effect_led_current_step);
-// 	set_led_effect(LED_EFFECT_OFF);
 
 	// cleanup 
 	set_green_led_mode(LED_OFF);
