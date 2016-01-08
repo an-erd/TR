@@ -30,9 +30,9 @@
 
 // led effect 
 #define LED_EFFECT_DELAY				80	// effect delay in ms between steps
-#define LED_EFFECT_ORANGE_ONGOING		1
-#define LED_EFFECT_ALL_ONGOING			2
-#define LED_EFFECT_CENTER_ONGOING		3
+#define LED_EFFECT_ORANGE				1
+#define LED_EFFECT_ALL					2
+#define LED_EFFECT_CENTER				3
 #define ORANGE_LED_EFFECT_STEPS			5
 #define ORANGE_LED_EFFECT_PERIOD 		3
 #define ALL_LED_EFFECT_STEPS			11
