@@ -6252,7 +6252,7 @@ Coin cell battery holder (SMD, 22mm)</description>
 <part name="S1" library="Wurth_Elektronik_Electromechanic_Switchs_rev15b" deviceset="431151015826" device=""/>
 <part name="S2" library="Wurth_Elektronik_Electromechanic_Switchs_rev15b" deviceset="431151015826" device=""/>
 <part name="S3" library="Wurth_Elektronik_Electromechanic_Switchs_rev15b" deviceset="431151015826" device=""/>
-<part name="JP1" library="pinhead" deviceset="PINHD-2X3" device="" value="ISP"/>
+<part name="JP1" library="pinhead" deviceset="PINHD-2X3" device="" value="nur PAD, keine Stiftleiste"/>
 <part name="GND3" library="supply1" deviceset="GND" device=""/>
 <part name="P+2" library="supply1" deviceset="VCC" device=""/>
 <part name="GND" library="supply1" deviceset="GND" device=""/>
@@ -6264,12 +6264,12 @@ Coin cell battery holder (SMD, 22mm)</description>
 <part name="U$2" library="adafruit" deviceset="FIDUCIAL" device=""/>
 <part name="P+1" library="supply1" deviceset="VCC" device=""/>
 <part name="Y1" library="SparkFun-FreqCtrl" deviceset="RESONATOR" device="8MHZ" value="8MHZ"/>
-<part name="SDA" library="pinhead" deviceset="PINHD-1X1" device=""/>
-<part name="SCL" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="SDA" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
+<part name="SCL" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
 <part name="U$3" library="Ava" deviceset="RENATA_STMU2032" device=""/>
 <part name="U$4" library="Ava" deviceset="C+K_AYZ0202AGRLC" device=""/>
-<part name="B0" library="pinhead" deviceset="PINHD-1X1" device=""/>
-<part name="B2" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="B0" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
+<part name="B2" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
 </parts>
 <sheets>
 <sheet>
@@ -6773,6 +6773,10 @@ Coin cell battery holder (SMD, 22mm)</description>
 </nets>
 </sheet>
 </sheets>
+<errors>
+<approved hash="104,1,-13.97,0,U$3,-,N$14,,,"/>
+<approved hash="104,1,-6.35,0,U$3,+,VCC,,,"/>
+</errors>
 </schematic>
 </drawing>
 </eagle>

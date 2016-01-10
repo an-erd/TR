@@ -6264,12 +6264,12 @@ Coin cell battery holder (SMD, 22mm)</description>
 <part name="U$2" library="adafruit" deviceset="FIDUCIAL" device=""/>
 <part name="P+1" library="supply1" deviceset="VCC" device=""/>
 <part name="Y1" library="SparkFun-FreqCtrl" deviceset="RESONATOR" device="8MHZ" value="8MHZ"/>
-<part name="SDA" library="pinhead" deviceset="PINHD-1X1" device=""/>
-<part name="SCL" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="SDA" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
+<part name="SCL" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
 <part name="U$3" library="Ava" deviceset="RENATA_STMU2032" device=""/>
 <part name="U$4" library="Ava" deviceset="C+K_AYZ0202AGRLC" device=""/>
-<part name="B0" library="pinhead" deviceset="PINHD-1X1" device=""/>
-<part name="B2" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="B0" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
+<part name="B2" library="pinhead" deviceset="PINHD-1X1" device="" value="nur PAD, keine Stiftleiste"/>
 </parts>
 <sheets>
 <sheet>
