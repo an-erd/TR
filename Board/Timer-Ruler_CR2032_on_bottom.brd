@@ -161,6 +161,7 @@
 01/2016@AE</text>
 <dimension x1="20.32" y1="44.45" x2="52.705" y2="44.45" x3="36.5125" y3="46.355" textsize="1.778" layer="20" dtype="horizontal"/>
 <dimension x1="20.32" y1="44.45" x2="20.32" y2="12.065" x3="17.78" y3="28.2575" textsize="1.778" layer="20" dtype="vertical"/>
+<text x="46.99" y="41.91" size="1.524" layer="25" font="vector" rot="SR270" align="center">ISP</text>
 </plain>
 <libraries>
 <library name="SparkFun-DigitalIC">

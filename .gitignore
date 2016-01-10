@@ -4,3 +4,6 @@ Release
 TimerRuler.componentinfo.xml
 TimerRuler.cproj
 ~$calc_power_consumption.xlsx
+*.lck
+Board/Timer-Ruler_CR2032_on_bottom.b#1
+*.b#1
