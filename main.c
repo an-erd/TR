@@ -38,6 +38,8 @@
 uint8_t						config_params_ee[NUM_CONFIG_PARAMS] EEMEM	= {1, 4, 4, 3};
 volatile static	uint8_t		PINChistory = 0x00;
 
+void main(void) __attribute__((noreturn));
+
 // global variables
 volatile sGlobalStatus program_status = {
 	.phase							= PHASE_RESET,
@@ -47,9 +49,10 @@ volatile sGlobalStatus program_status = {
 	.green_led_max_cycle			= 0,
 	.green_led_current_cycle		= 0,
 	.green_led_OCR1B_basis			= 0,
-	.orange_led_counter				= ORANGE_LED_EFFECT_DELAY,
-	.orange_led_current_step		= 0,
-	.orange_led_max_step			= ORANGE_LED_EFFECT_STEPS,
+	.led_effect_ongoing				= LED_OFF,
+	.effect_led_ms_counter			= LED_EFFECT_DELAY,
+	.effect_led_current_step		= 0,
+	.effect_led_direction			= ALL_LED_CENTER_EFFECT_LR,
 	.orange_led_period				= 0,
 	.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_MAINPROG,
 };
@@ -83,17 +86,41 @@ ISR ( TIMER0_COMPA_vect )
 			}
 		}
 	}
-		
-	// the orange led effect is done w/TIMER0/A, delay between effects w/TIMER1/A
-	if ( program_status.phase & BIT(PHASE_TRAINING) && program_status.orange_led_current_step ){
-		if (! --program_status.orange_led_counter){
-			program_status.orange_led_counter = ORANGE_LED_EFFECT_DELAY;
-			program_status.orange_led_current_step--;
 
-			PORTD_modified = PORTD;
-			bit_clear(PORTD_modified, LED_PORTD_ORANGE);
-			bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.orange_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );	
-			PORTD = PORTD_modified;
+	// the led effects are done w/TIMER0/A, delay between effects w/TIMER1/A
+	if (program_status.effect_led_current_step){
+		switch (program_status.led_effect_ongoing){
+			case LED_EFFECT_ORANGE:
+				if(program_status.phase & BIT(PHASE_TRAINING)){
+			 		if (! --program_status.effect_led_ms_counter){
+ 						program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+		 				program_status.effect_led_current_step--;
+ 
+	 					PORTD_modified = PORTD;
+ 						bit_clear(PORTD_modified, LED_PORTD_ORANGE);
+	 					bit_set(PORTD_modified, ledArrayOrangeEffect[program_status.effect_led_current_step][(bit_get(program_status.phase, BIT(PHASE_ACTIVE))) ? 0 : 1] );	
+ 						PORTD = PORTD_modified;
+ 					}
+ 				}
+				break;
+			case LED_EFFECT_ALL:
+				if (! --program_status.effect_led_ms_counter){
+					program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+					program_status.effect_led_current_step--;
+					PORTD = ledArrayAllEffect[program_status.effect_led_current_step][program_status.effect_led_direction];
+				}
+ 				break;	
+			case LED_EFFECT_CENTER:
+				if (! --program_status.effect_led_ms_counter){
+					program_status.effect_led_ms_counter = LED_EFFECT_DELAY;
+					program_status.effect_led_current_step--;
+					PORTD = ledArrayAllCenterEffect[program_status.effect_led_current_step];
+				}
+ 				break;
+			case LED_OFF:
+				break;
+			default:
+				break;
 		}
 	}
 }
@@ -122,7 +149,7 @@ ISR ( TIMER1_COMPA_vect )
 			break;
 	}
 	
-	if ( program_status.phase & BIT(PHASE_TRAINING)){
+	if ( bit_get(program_status.phase, BIT(PHASE_TRAINING))){
 		if (! --program_status.backward_counter_sec_to_go){
 			bit_set(PORTD, BIT(program_status.current_led_step));
 		} else {
@@ -130,12 +157,12 @@ ISR ( TIMER1_COMPA_vect )
 		}
 		
 		if (! --program_status.orange_led_period) {
-			program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
-			program_status.orange_led_current_step = program_status.orange_led_max_step;	// fire effect w/orange leds
+			program_status.orange_led_period		= ORANGE_LED_EFFECT_PERIOD;
+			program_status.effect_led_current_step	= ORANGE_LED_EFFECT_STEPS;	// fire effect w/orange leds
 		}
 	}
 			
-	if ( program_status.phase & (BIT(PHASE_MAINPROG)|BIT(PHASE_CONFIG)|BIT(PHASE_PAUSE))){
+	if ( bit_get(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_CONFIG)|BIT(PHASE_PAUSE))){
 		--program_status.backward_cnt_sec_to_deep_sleep;
 	}
 }
@@ -155,7 +182,7 @@ ISR ( TIMER1_COMPB_vect )
 			if (--program_status.green_led_current_cycle){
 				OCR1B += program_status.green_led_OCR1B_basis;	// prepare for next hit/cycle
 			} else {
-				OCR1B = program_status.green_led_OCR1B_basis;	// reinitialize compare value for next cycle to first hit
+				OCR1B  = program_status.green_led_OCR1B_basis;	// reinitialize compare value for next cycle to first hit
 				program_status.green_led_current_cycle = program_status.green_led_max_cycle; // reinitialize cycle counter
 			}
 			break;
@@ -181,14 +208,14 @@ ISR ( PCINT1_vect )
 	changedbits = PINC ^ PINChistory;
 	PINChistory = PINC;
 
-	if(changedbits & BIT(PINC0)){
-		program_status.buttons[0].temp_state_button_pressed = !(PINC & BIT(PINC0));
+	if(bit_get(changedbits, BIT(PINC0))){
+		program_status.buttons[0].temp_state_button_pressed = !bit_get(PINC, BIT(PINC0));
 	}
-	if(changedbits & BIT(PINC1)){
-		program_status.buttons[1].temp_state_button_pressed = !(PINC & BIT(PINC1));
+	if(bit_get(changedbits, BIT(PINC1))){
+		program_status.buttons[1].temp_state_button_pressed = !bit_get(PINC, BIT(PINC1));
 	}
-	if(changedbits & BIT(PINC2)){
-		program_status.buttons[2].temp_state_button_pressed = !(PINC & BIT(PINC2));
+	if(bit_get(changedbits, BIT(PINC2))){
+		program_status.buttons[2].temp_state_button_pressed = !bit_get(PINC, BIT(PINC2));
 	}
 }
 
@@ -208,8 +235,8 @@ void init_io_pins(void)
 	PORTC = 0x7F;					// PC0..2 used for switches, but set all w/pull-ups
 	DDRD  = 0xFF;					// all port D as output (all PD0..7 used for LEDs)
 	
-	PCICR  |= BIT(PCIE1);									// pin change interrupt enable
-	PCMSK1 |= ( BIT(PCINT8) | BIT(PCINT9) | BIT(PCINT10) );	// Enable pin change detection
+	bit_set(PCICR,  BIT(PCIE1));							// pin change interrupt enable
+	bit_set(PCMSK1, BIT(PCINT8)|BIT(PCINT9)|BIT(PCINT10) );	// Enable pin change detection
 
 	PINChistory = PINC;
 	
@@ -224,16 +251,16 @@ void init_timers(void)
 	// - timer1b: used together with timer1a to get a GREEN LED heartbeat (.1ms/.9s blink), of green flashing led
 
 	// timer0
-	TCCR0A |= BIT(WGM01);						// Configure timer0 for CTC mode,
-	TCCR0B |= BIT(CS01);						// Start timer @F_CPU/8
-	OCR0A = 124;								// 8 MHz, 8bit, CKDIV8 set, 1/8 prescale -> 1 KHz (125 ticks / .001s=1ms
-	TIMSK0 |= BIT(OCIE0A);						// Enable Timer/Counter Compare Match A interrupt
+	bit_set(TCCR0A, BIT(WGM01));				// Configure timer0 for CTC mode,
+	bit_set(TCCR0B, BIT(CS01));					// Start timer @F_CPU/8
+	OCR0A	= 124;								// 8 MHz, 8bit, CKDIV8 set, 1/8 prescale -> 1 KHz (125 ticks / .001s=1ms
+	bit_set(TIMSK0, BIT(OCIE0A));				// Enable Timer/Counter Compare Match A interrupt
 	
 	// timer1
-	TCCR1B |= (BIT(WGM12)|BIT(CS11)|BIT(CS10)); // Configure timer1 for CTC mode, start timer @F_CPU/64
-	OCR1A = 15625; 								// 8 MHz, 16bit, CKDIV8 set, 1/64 prescale -> 1 Hz (= 15625 Ticks/ 1s)
-	OCR1B =  1562;								// and 1562 Ticks / .1s
-	TIMSK1 |= (BIT(OCIE1A) | BIT(OCIE1B)); 		// Enable Timer/Counter Compare Match interrupt on both channel A and B
+	bit_set(TCCR1B, BIT(WGM12)|BIT(CS11)|BIT(CS10)); // Configure timer1 for CTC mode, start timer @F_CPU/64
+	OCR1A	= 15625; 							// 8 MHz, 16bit, CKDIV8 set, 1/64 prescale -> 1 Hz (= 15625 Ticks/ 1s)
+	OCR1B	=  1562;							// and 1562 Ticks / .1s
+	bit_set(TIMSK1, BIT(OCIE1A)|BIT(OCIE1B)); 	// Enable Timer/Counter Compare Match interrupt on both channel A and B
 
 	return;
 }
@@ -242,13 +269,11 @@ void restart_timer1(void)
 {
 	uint8_t history_TCCR1B = TCCR1B & (BIT(CS10)|BIT(CS11)|BIT(CS12));
 
-	TCCR1B &= ~history_TCCR1B;			// stop clock
+	bit_clear(TCCR1B, history_TCCR1B);	// stop clock
 	TCNT1 = 0;							// reset TCNT1 counter
-
 	led_set(LED9, OFF);
 	OCR1B = program_status.green_led_OCR1B_basis;	// set correct OCR1B compare value
-	
-	TCCR1B |= history_TCCR1B;			// start clock
+	bit_set(TCCR1B, history_TCCR1B);			// start clock
 			
 	return;
 }
@@ -292,9 +317,91 @@ void set_green_led_mode(uint8_t led_mode)
 		default:
 			break;
 	}
-	
 	restart_timer1();
 
+	return;
+}
+
+void set_led_effect(const uint8_t led_effect)
+{
+	switch(led_effect){
+		case LED_EFFECT_ORANGE:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_ORANGE;
+			break;
+		case LED_EFFECT_ALL:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_ALL;
+			break;
+		case LED_EFFECT_CENTER:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_EFFECT_CENTER;
+			break;
+		case LED_OFF:
+			program_status.orange_led_period		= 0;
+			program_status.effect_led_current_step	= 0;
+			program_status.led_effect_ongoing		= LED_OFF;
+			break;
+		default:
+			break;
+	}
+	
+	return;
+}
+
+void set_led_effect_all_direction(const uint8_t led_effect_direction)
+{
+	program_status.effect_led_direction = led_effect_direction;
+}
+
+void start_led_effect(void)
+{
+	switch(program_status.led_effect_ongoing){
+		case LED_EFFECT_ORANGE:
+			program_status.orange_led_period		= ORANGE_LED_EFFECT_PERIOD;
+			break;
+		case LED_EFFECT_ALL:
+			program_status.effect_led_current_step	= ALL_LED_EFFECT_STEPS;
+			break;
+		case LED_EFFECT_CENTER:
+			program_status.effect_led_current_step	= ALL_LED_CENTER_EFFECT_STEPS;
+			break;
+		default:
+			break;
+	}
+		
+	return;
+}
+
+void all_led_effect_and_wait_to_complete(const uint8_t led_effect_direction)
+{
+	uint8_t tmp_phase = program_status.phase;
+	
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING));
+	set_led_effect(LED_EFFECT_ALL);
+	set_led_effect_all_direction(led_effect_direction);
+	start_led_effect();
+	do {} while (program_status.effect_led_current_step);
+	set_led_effect(LED_OFF);
+	program_status.phase = tmp_phase;
+	
+	return;
+}
+
+void center_led_effect_and_wait_to_complete(void)
+{
+	uint8_t tmp_phase = program_status.phase;
+	
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING));
+	set_led_effect(LED_EFFECT_CENTER);
+	start_led_effect();
+	do {} while (program_status.effect_led_current_step);
+	set_led_effect(LED_OFF);
+	program_status.phase = tmp_phase;
+	
 	return;
 }
 
@@ -308,7 +415,6 @@ void enable_ppr(void)
 	power_twi_disable();				// Two Wire Interface module
 	power_usart0_disable();				// USART module
 	// Turn off brownout detection
-	// Turn off the watchdog timer
 	
 	return;
 }
@@ -463,13 +569,11 @@ void perform_phase_training(void)
 	uint8_t		in_cycle_steps_done			= 0;
 	uint8_t		exit_training_immediately	= 0;			// T2 pressed, back to config
 	
-	program_status.phase &= ~BIT(PHASE_MAINPROG);
-	program_status.phase |=  BIT(PHASE_TRAINING);
+	bit_flip(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_TRAINING));
 	
+	set_led_effect(LED_OFF);
 	set_green_led_mode(HEARTBEAT_LED);
- 	program_status.orange_led_period = ORANGE_LED_EFFECT_PERIOD;
- 	program_status.orange_led_current_step = 0;
-
+		
 	// The training routine is essentially a loop using the same code to perform ACTIVE and REST phases, i.e.
 	//
 	// do
@@ -487,9 +591,9 @@ void perform_phase_training(void)
 	do { 
 		cycle_counter++;
 		in_cycle_steps_done = 0;
-		
-		program_status.phase &= ~BIT(PHASE_REST);
-		program_status.phase |=  BIT(PHASE_ACTIVE);
+
+		bit_set(program_status.phase, BIT(PHASE_ACTIVE));
+		bit_clear(program_status.phase, BIT(PHASE_REST));		
 		
 		do { 
 			// in-cycle 2-step loop
@@ -498,10 +602,10 @@ void perform_phase_training(void)
 			//	b) update orange leds (PD5..7) for training phase ACTIVE (L->R)/REST (R->L)
 			//	c) green led stays in heartbeat mode
 			bit_clear(PORTD, LED_PORTD_RED);
-
-			// fire cascade LR or RL, respectively, to start ACTIVE or REST phase
-			// TODO 
-
+			all_led_effect_and_wait_to_complete(in_cycle_steps_done);
+			set_led_effect(LED_EFFECT_ORANGE);
+			start_led_effect();
+			
 			// 5 leds, steps 0..4 to do, e.g., "3" means: LED0..2 on, LED3 flash, LED4 off
 			for (program_status.current_led_step = 0; program_status.current_led_step < 5; program_status.current_led_step++){
 				// .backward_counter_sec_to_go to be decreased by timer1/A, threshold values in array
@@ -530,52 +634,47 @@ void perform_phase_training(void)
 					if (program_status.buttons[2].button_pressed){
 						program_status.buttons[2].button_pressed = 0;
 						
-						if (program_status.phase & BIT(PHASE_TRAINING))	{
+						if (bit_get(program_status.phase, BIT(PHASE_TRAINING)))	{
 							// stop decreasing .backward_counter_sec_to_go/orange leds, but start deep sleep backward counter 
-							program_status.phase &= ~BIT(PHASE_TRAINING);
-							program_status.phase |=  BIT(PHASE_PAUSE);
+							bit_flip(program_status.phase, BIT(PHASE_TRAINING)|BIT(PHASE_PAUSE));
 							touch_deep_sleep_counter();
 							set_green_led_mode(SLOW_FLASHING_LED);
 						} else if (program_status.phase & BIT(PHASE_PAUSE)){
 							// enable decreasing .backward_counter_sec_to_go/orange leds, but stop deep sleep backward counter 
 							// deep sleep backward counter will be stopped
-							program_status.phase &= ~BIT(PHASE_PAUSE);
-							program_status.phase |=  BIT(PHASE_TRAINING);
+							bit_flip(program_status.phase, BIT(PHASE_PAUSE)|BIT(PHASE_TRAINING));
 							set_green_led_mode(HEARTBEAT_LED);
 						}
 					}
 				} while (! exit_training_immediately && program_status.backward_counter_sec_to_go);		// will not be decreased in ISR if in PAUSE mode, so no problem
 			}
 			
-			program_status.phase &= ~BIT(PHASE_ACTIVE);
-			program_status.phase |=  BIT(PHASE_REST);
+			bit_flip(program_status.phase, BIT(PHASE_ACTIVE)|BIT(PHASE_REST));
 			in_cycle_steps_done++;
 		} while (! exit_training_immediately && in_cycle_steps_done < 2);	// perform 2nd cycle or leave (if this was the 2nd cycle or immediate exit)
-
-	// fire cascade -> another cycle completed
-	// TODO
 
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
 	} while ( ! exit_training_immediately 
 			&& ( (! program_status.config_params[CONFIG_NR_CYCLES])	// true, if repeat endlessly is configured
 			|| (cycle_counter < program_status.config_params[CONFIG_NR_CYCLES])));		// or all cycles completed
 
-	// fire cascade -> all cycles completed
-	// TODO
+	// all cycles completed 
+	if(!exit_training_immediately){
+		center_led_effect_and_wait_to_complete();
+	}
 
 	// cleanup 
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
+	set_led_effect(OFF);
 
-	program_status.phase &= ~BIT(PHASE_TRAINING);
-	program_status.phase &= ~BIT(PHASE_ACTIVE);
-	program_status.phase &= ~BIT(PHASE_REST);
-	program_status.phase |=	 BIT(PHASE_MAINPROG);
+	bit_clear(program_status.phase, BIT(PHASE_TRAINING)|BIT(PHASE_ACTIVE)|BIT(PHASE_REST));
+	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
 	
 	return;	
 }
 
-int main(void)
+void main(void)
 {
 	uint8_t	go_to_training_next = 0;
 	
@@ -606,18 +705,21 @@ int main(void)
 
 #ifdef _ALL_LED_ON_FOR_5_SEC_
 	// to measure power consumption
-// 	uint8_t temp_cnt;
-// 	led_set_all(OFF);
-// 	for (temp_cnt=0;temp_cnt<9;temp_cnt++)
-// 	{
-// 		_delay_ms(5000);
-// 		led_set(temp_cnt, ON);
-// 	}
 	led_set_all(ON); _delay_ms(5000);led_set_all(OFF); _delay_ms(200);
 #endif // _ALL_LED_ON_FOR_5_SEC_
 
+#ifdef _INCREASE_NUM_LED_ON_
+	// to measure power consumption
+ 	uint8_t temp_cnt;
+ 	led_set_all(OFF);
+ 	for (temp_cnt=0;temp_cnt<9;temp_cnt++)
+ 	{
+ 		_delay_ms(5000);
+ 		led_set(temp_cnt, ON);
+ 	}
+#endif // _INCREASE_NUM_LED_ON_
+
 	read_permanent_config_params();
-	store_config_params_permanently();
 	perform_phase_config_calculation();
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
@@ -659,6 +761,4 @@ int main(void)
 			set_green_led_mode(SHORT_HEARTBEAT_LED);
 		}
 	}
-	
-	return 0;							// return value?
 }

@@ -15,10 +15,11 @@
 // power saving mode wait this time in seconds go go to deep sleep
 #define DEEP_SLEEP_SEC_MAINPROG			15
 #define DEEP_SLEEP_SEC_CONFIG			15
-#define DEEP_SLEEP_SEC_TRAINING_PAUSE	60
+#define DEEP_SLEEP_SEC_TRAINING_PAUSE	30
 
-// modes for green led (int and not bit mode)
+
 #define LED_OFF							0
+// modes for green led (int and not bit mode)
 #define SLOW_FLASHING_LED				1
 #define FAST_FLASHING_LED				2
 #define HEARTBEAT_LED					3
@@ -27,10 +28,17 @@
 // actual green led
 #define LED9							8
 
-// orange led effect configuration (during training)
+// led effect 
+#define LED_EFFECT_DELAY				80	// effect delay in ms between steps
+#define LED_EFFECT_ORANGE				1
+#define LED_EFFECT_ALL					2
+#define LED_EFFECT_CENTER				3
 #define ORANGE_LED_EFFECT_STEPS			5
-#define ORANGE_LED_EFFECT_DELAY			80	// effect delay in ms between steps
 #define ORANGE_LED_EFFECT_PERIOD 		3
+#define ALL_LED_EFFECT_STEPS			11
+#define ALL_LED_CENTER_EFFECT_STEPS		12
+#define ALL_LED_CENTER_EFFECT_LR		0
+#define ALL_LED_CENTER_EFFECT_RL		1
 
 // define bit mask for all available and specific LEDs on PORTB and PORTD
 #define LED_PORTB						0x02

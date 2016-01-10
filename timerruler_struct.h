@@ -36,15 +36,15 @@ typedef struct
 	uint8_t			green_led_current_cycle;			// repeat until current_cycle == max_cycle
 	uint16_t		green_led_OCR1B_basis;				// set for next compare: OCR1B = current_cycle * OCR1B_basis
 	
-	// orange LED effect
-	uint16_t		orange_led_counter;					// counter used in ORC0A to measure specific ms length
-	uint8_t			orange_led_current_step;			// used and increased in OCR0A, reset in OCR1A
-	uint8_t			orange_led_max_step;
+	// all led cascade effect (orange LED effect, all LED effect)
+	uint16_t		effect_led_ms_counter;				// backward counter used in ORC0A to measure specific ms length
+	uint8_t			effect_led_current_step;			// used and increased in OCR0A, reset in OCR1A
+	uint8_t			effect_led_direction;			// gives direction if L->R (1) or R->L (0)
+	uint8_t			led_effect_ongoing;					// if (effect_led_current_step), this effect will be fired
 	uint8_t			orange_led_period;					// time period in seconds until next effect
 
 	// power optimization
 	uint16_t		backward_cnt_sec_to_deep_sleep;
-
 	
 } sGlobalStatus;
 
