@@ -222,8 +222,6 @@ ISR ( PCINT1_vect )
 void init_global_vars(void)
 {
 	program_status.phase = PHASE_RESET;
-	
-	return;
 }
 
 void init_io_pins(void)
@@ -239,8 +237,6 @@ void init_io_pins(void)
 	bit_set(PCMSK1, BIT(PCINT8)|BIT(PCINT9)|BIT(PCINT10) );	// Enable pin change detection
 
 	PINChistory = PINC;
-	
-	return;	
 }
 
 void init_timers(void)
@@ -261,8 +257,6 @@ void init_timers(void)
 	OCR1A	= 15625; 							// 8 MHz, 16bit, CKDIV8 set, 1/64 prescale -> 1 Hz (= 15625 Ticks/ 1s)
 	OCR1B	=  1562;							// and 1562 Ticks / .1s
 	bit_set(TIMSK1, BIT(OCIE1A)|BIT(OCIE1B)); 	// Enable Timer/Counter Compare Match interrupt on both channel A and B
-
-	return;
 }
 
 void restart_timer1(void)
@@ -274,8 +268,6 @@ void restart_timer1(void)
 	led_set(LED9, OFF);
 	OCR1B = program_status.green_led_OCR1B_basis;	// set correct OCR1B compare value
 	bit_set(TCCR1B, history_TCCR1B);			// start clock
-			
-	return;
 }
 
 void set_green_led_mode(uint8_t led_mode)
@@ -318,8 +310,6 @@ void set_green_led_mode(uint8_t led_mode)
 			break;
 	}
 	restart_timer1();
-
-	return;
 }
 
 void set_led_effect(const uint8_t led_effect)
@@ -348,8 +338,6 @@ void set_led_effect(const uint8_t led_effect)
 		default:
 			break;
 	}
-	
-	return;
 }
 
 void set_led_effect_all_direction(const uint8_t led_effect_direction)
@@ -372,8 +360,6 @@ void start_led_effect(void)
 		default:
 			break;
 	}
-		
-	return;
 }
 
 void all_led_effect_and_wait_to_complete(const uint8_t led_effect_direction)
@@ -387,8 +373,6 @@ void all_led_effect_and_wait_to_complete(const uint8_t led_effect_direction)
 	do {} while (program_status.effect_led_current_step);
 	set_led_effect(LED_OFF);
 	program_status.phase = tmp_phase;
-	
-	return;
 }
 
 void center_led_effect_and_wait_to_complete(void)
@@ -401,8 +385,6 @@ void center_led_effect_and_wait_to_complete(void)
 	do {} while (program_status.effect_led_current_step);
 	set_led_effect(LED_OFF);
 	program_status.phase = tmp_phase;
-	
-	return;
 }
 
 void enable_ppr(void)
@@ -415,8 +397,6 @@ void enable_ppr(void)
 	power_twi_disable();				// Two Wire Interface module
 	power_usart0_disable();				// USART module
 	// Turn off brownout detection
-	
-	return;
 }
 
 void touch_deep_sleep_counter(void)
@@ -428,8 +408,6 @@ void touch_deep_sleep_counter(void)
 	} else if(bit_get(program_status.phase, BIT(PHASE_PAUSE))){
 		program_status.backward_cnt_sec_to_deep_sleep = DEEP_SLEEP_SEC_TRAINING_PAUSE;
 	}
-	
-	return;
 }
 
 void go_to_appropriate_sleep_mode(void)
@@ -451,8 +429,6 @@ void go_to_appropriate_sleep_mode(void)
 void read_permanent_config_params()
 {
 	eeprom_read_block((void*) program_status.config_params, (const void*) config_params_ee, NUM_CONFIG_PARAMS);
-	
-	return;
 }
 
 void perform_phase_config(void)
@@ -524,8 +500,6 @@ void perform_phase_config(void)
 	led_set_all(OFF);
 	
 	program_status.phase = BIT(PHASE_MAINPROG);
-	
-	return;	
 }
 
 void store_config_params_permanently()
@@ -534,8 +508,6 @@ void store_config_params_permanently()
 	eeprom_busy_wait();
 	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_CONFIG_PARAMS);
 	sei();
-	
-	return;
 }
 
 void perform_phase_config_calculation(void)
@@ -559,8 +531,6 @@ void perform_phase_config_calculation(void)
 	program_status.led_steps_threshold[0][1] = temp_multiplied_interval_length / 5;
 	program_status.led_steps_threshold[1][1] =
 		program_status.led_steps_threshold[0][1] + temp_multiplied_interval_length % 5;
-	
-	return;
 }
 
 void perform_phase_training(void)
@@ -670,8 +640,6 @@ void perform_phase_training(void)
 
 	bit_clear(program_status.phase, BIT(PHASE_TRAINING)|BIT(PHASE_ACTIVE)|BIT(PHASE_REST));
 	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
-	
-	return;	
 }
 
 void main(void)

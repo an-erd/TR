@@ -38,7 +38,6 @@ void led_set (uint8_t led_nr, uint8_t led_state)
 		case 4: bit_write(led_state, PORTD, BIT(ledArray[led_nr][1])); break;
 		default: ;
 	}
-	return;
 }
 
 void led_flip (uint8_t led_nr)
@@ -50,7 +49,6 @@ void led_flip (uint8_t led_nr)
 		case 4: bit_flip(PORTD, BIT(ledArray[led_nr][1])); break;
 		default: ;
 	}
-	return;
 }
 
 // turn all 9 LED on/off
@@ -63,5 +61,4 @@ void led_set_all (uint8_t led_state)
 		PORTB &= ~LED_PORTB;
 		PORTD &= ~LED_PORTD;
 	}
-	return;
 } 
