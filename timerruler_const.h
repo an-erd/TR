@@ -68,6 +68,8 @@
 #define PHASE_PAUSE						5
 #define PHASE_SHOW_results				6
 #define PHASE_RESET						7
+#define PHASE_LIGHT_EFFECT				8
+#define PHASE_METRONOME					9
 
 #define CONFIG_INTERVAL_CNT				0	// counter for configuration of interval length
 #define CONFIG_NR_INTERVAL_ACTIVE		1	// number of intervals in "active" phase

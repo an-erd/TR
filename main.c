@@ -497,7 +497,7 @@ void perform_choose_subprog(void)
 }
 
 
-void perform_phase_config(void)
+void perform_phase_config_timer(void)
 {
 	uint8_t immediate_go		= 0;
 	uint8_t loop_counter		= 0;
@@ -561,6 +561,40 @@ void perform_phase_config(void)
 			immediate_go++;
 		}
 	} while (! immediate_go);
+
+	set_green_led_mode(LED_OFF);
+	led_set_all(OFF);
+	
+	program_status.phase = BIT(PHASE_MAINPROG);
+}
+
+void perform_phase_config_light_effect(void)
+{
+// 	uint8_t immediate_go		= 0;
+// 	uint8_t loop_counter		= 0;
+// 	uint8_t tmp_config_value	= 0;
+
+	program_status.phase = BIT(PHASE_CONFIG);		// set phase to CONFIG, no "|" necessary, just set
+	set_green_led_mode(FAST_FLASHING_LED);			// green led flashing fast -> configuration mode
+
+
+
+	set_green_led_mode(LED_OFF);
+	led_set_all(OFF);
+	
+	program_status.phase = BIT(PHASE_MAINPROG);
+}
+
+void perform_phase_config_metronome(void)
+{
+// 	uint8_t immediate_go		= 0;
+// 	uint8_t loop_counter		= 0;
+// 	uint8_t tmp_config_value	= 0;
+	
+	program_status.phase = BIT(PHASE_CONFIG);		// set phase to CONFIG, no "|" necessary, just set
+	set_green_led_mode(FAST_FLASHING_LED);			// green led flashing fast -> configuration mode
+
+
 
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
@@ -700,15 +734,59 @@ void perform_phase_training(void)
 	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
 }
 
+
+void perform_phase_metronome(void)
+{
+	bit_flip(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_METRONOME));
+	
+	set_led_effect(LED_OFF);
+	set_green_led_mode(LED_OFF);
+	
+	// all led on for foto
+	PORTD = ledArrayRedCascade_LR[5] | ledArrayOrangeCascade_LR[3];
+	led_set(LED9, ON);
+	
+	while (! program_status.buttons[0].button_pressed && ! program_status.buttons[1].button_pressed
+		&& !  program_status.buttons[2].button_pressed ){
+		go_to_appropriate_sleep_mode();
+	}
+		
+	// cleanup
+	set_green_led_mode(LED_OFF);
+	led_set_all(OFF);
+	set_led_effect(OFF);
+
+	bit_clear(program_status.phase, BIT(PHASE_METRONOME));
+	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
+}
+
+void perform_phase_light_effect(void)
+{
+	bit_flip(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_LIGHT_EFFECT));
+	
+	set_led_effect(LED_OFF);
+	set_green_led_mode(HEARTBEAT_LED);
+
+	center_led_effect_and_wait_to_complete();
+	
+	// cleanup
+	set_green_led_mode(LED_OFF);
+	led_set_all(OFF);
+	set_led_effect(OFF);
+
+	bit_clear(program_status.phase, BIT(PHASE_LIGHT_EFFECT));
+	bit_set(program_status.phase, BIT(PHASE_MAINPROG));
+}
+
 void main(void)
 {
-	uint8_t	go_to_training_next = 0;
+	uint8_t	execute_subprogram_next = 0;
 	
 	// overall program sketch
 	//	1) initialization (global vars, I/O pins, timers, interrupts, ...)
-	//	2) button T1 -> nothing yet
-	//	   button T2 -> PHASE CONFIG: user input for interval multiplier, #active and #rest intervals, #cycles
-	//	   button T3 -> PHASE TRAINING: perform ACTIVE and REST alternately, until #cycles reached or do it endlessly
+	//	2) button T1 -> chosse subprogram
+	//	   button T2 -> configure subprogram during PHASE CONFIG (e.g. TIMER: user input for interval multiplier, #active and #rest intervals, #cycles)
+	//	   button T3 -> execute subprogram (e.g. TIMER: PHASE TRAINING to perform ACTIVE and REST alternately, until #cycles reached or do it endlessly)
 	//
 	//	also using switches during training: 
 	//		- view number cycles achieved		TODO
@@ -763,29 +841,53 @@ void main(void)
 			
 			perform_choose_subprog();
 			set_green_led_mode(SHORT_HEARTBEAT_LED);
-			store_config_params_permanently();			
+			store_config_params_permanently();
+			perform_phase_config_calculation();		
 		}
 		
-		// button T2 -> config
+		// button T2 -> configuration of subprogram used
 		if (program_status.buttons[1].button_pressed){
 			program_status.buttons[1].button_pressed = 0;
-			perform_phase_config();
+			switch(program_status.subprog_param){
+				case SUBPROG_TIMER: 
+					perform_phase_config_timer();					
+					break;
+				case SUBPROG_METRONOME:
+					perform_phase_config_metronome();
+					break;
+				case SUBPROG_LIGHT_EFFECT:
+					perform_phase_config_light_effect();
+					break;
+				default:
+					break;
+			}
 			store_config_params_permanently();
 			perform_phase_config_calculation();
 			
-			go_to_training_next = 1;			
+			execute_subprogram_next = 1;			
 		}
 
-		// button T3 -> training
+		// button T3 -> execute subprogram chosen
 		if (program_status.buttons[2].button_pressed){
 			program_status.buttons[2].button_pressed = 0;
-			
-			go_to_training_next = 1;
+			execute_subprogram_next = 1;
 		}
 
-		if (go_to_training_next){
-			go_to_training_next = 0;
-			perform_phase_training();	
+		if (execute_subprogram_next){
+			execute_subprogram_next = 0;
+			switch(program_status.subprog_param){
+				case SUBPROG_TIMER: 
+					perform_phase_training();	
+					break;
+				case SUBPROG_METRONOME:
+					perform_phase_metronome();
+					break;
+				case SUBPROG_LIGHT_EFFECT:
+					perform_phase_light_effect();
+					break;
+				default:
+					break;
+			}
 			
 			program_status.phase = BIT(PHASE_MAINPROG);
 			set_green_led_mode(SHORT_HEARTBEAT_LED);

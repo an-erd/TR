@@ -45,7 +45,7 @@ During CONFIG
 =============
 	T1					-> increase config parameter value, wrap-arolund 5 -> 1 or 0 resp.
 	T2					-> switch to next config parameter, wrap-around is done
-	T3					-> GO! (training)
+	T3					-> GO! fire chosen subprog)
 
 	LED PD0..4/red		-> show configurated value
 	LED PD5..7/orange	-> show configuration step (000/INT, 100/ACT, 110/REST, 111/cycles)
@@ -74,6 +74,15 @@ TODO and optimization
 =====================
 - none yet
 
+EEPROM usage for permanently store configuration parameter
+==========================================================
+uint8_t	EEMEM subprog_param_ee: goes to program_status.subprog_param
+set to 
+    SUBPROG_TIMER
+    SUBPROG_METRONOME
+    SUBPROG_LIGHT_EFFECT
+
+uint8_t	EEMEM config_params_ee[NUM_SUBPROGS][NUM_CONFIG_PARAMS] to store values in(maybe a little waste of space)
 
 Timer calculation/values
 ========================
