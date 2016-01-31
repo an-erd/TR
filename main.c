@@ -35,13 +35,15 @@
 #include "timerruler_const.h"
 #include "timerruler_led.h"
 
-uint8_t						config_params_ee[NUM_CONFIG_PARAMS] EEMEM	= {1, 4, 4, 3};
-volatile static	uint8_t		PINChistory = 0x00;
+uint8_t						EEMEM	config_params_ee[NUM_CONFIG_PARAMS] = {1, 4, 4, 3};
+uint8_t						EEMEM	subprog_param_ee					= 0;
+volatile static	uint8_t				PINChistory							= 0x00;
 
 void main(void) __attribute__((noreturn));
 
 // global variables
 volatile sGlobalStatus program_status = {
+	.subprog_param						= SUBPROG_TIMER,
 	.phase							= PHASE_RESET,
 	.current_led_step				= 0,
 	.buttons						= {{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},{DEBOUNCE_THRESHOLD,0,0,0,},},
@@ -429,7 +431,70 @@ void go_to_appropriate_sleep_mode(void)
 void read_permanent_config_params()
 {
 	eeprom_read_block((void*) program_status.config_params, (const void*) config_params_ee, NUM_CONFIG_PARAMS);
+	program_status.subprog_param = eeprom_read_byte((const uint8_t*) &subprog_param_ee);
 }
+
+void store_config_params_permanently()
+{
+	cli();
+	eeprom_busy_wait();
+	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_CONFIG_PARAMS);
+	eeprom_update_byte((uint8_t*) &subprog_param_ee, program_status.subprog_param); 
+	sei();
+}
+
+void perform_choose_subprog(void)
+{
+	uint8_t exit_routine		= 0;
+	uint8_t tmp_config_value	= 0;
+
+//	const uint8_t	config_params_min_max[NUM_CONFIG_PARAMS][2] = {{1,5},{1,5},{1,5},{0,5}};
+	
+	program_status.phase = BIT(PHASE_CONFIG);	// no "|" necessary, just set
+	set_green_led_mode(FAST_FLASHING_LED);				// green led flashing fast -> configuration mode
+	
+	// The choose subprog routine is essentially a loop to choose the relevant subprog (timer, metronome, ...) 
+	// 
+	// while (! Button T3 pressed)
+	//		inc subprog_counter
+	//		update red leds accordingly
+	//
+	
+	do {
+		tmp_config_value = program_status.subprog_param;
+		PORTD = ledArrayRedCascade_LR[tmp_config_value+1];
+		touch_deep_sleep_counter();
+		
+		// wait for key pressed
+		while (! program_status.buttons[0].button_pressed && ! program_status.buttons[1].button_pressed
+		&& !  program_status.buttons[2].button_pressed ){
+			go_to_appropriate_sleep_mode();
+		}
+		
+		if (program_status.buttons[0].button_pressed){
+			program_status.buttons[0].button_pressed = 0;
+			tmp_config_value++;
+			tmp_config_value %= NUM_SUBPROGS;
+			PORTD = ledArrayRedCascade_LR[tmp_config_value+1];
+			program_status.subprog_param = tmp_config_value;	// write config back
+		}
+		
+		if (program_status.buttons[1].button_pressed){
+			program_status.buttons[1].button_pressed = 0;
+			// nothing yet
+		}
+		if (program_status.buttons[2].button_pressed){
+			program_status.buttons[2].button_pressed = 0;
+			exit_routine++;
+		}
+	} while (! exit_routine);
+
+	set_green_led_mode(LED_OFF);
+	led_set_all(OFF);
+	
+	program_status.phase = BIT(PHASE_MAINPROG);
+}
+
 
 void perform_phase_config(void)
 {
@@ -500,14 +565,6 @@ void perform_phase_config(void)
 	led_set_all(OFF);
 	
 	program_status.phase = BIT(PHASE_MAINPROG);
-}
-
-void store_config_params_permanently()
-{
-	cli();
-	eeprom_busy_wait();
-	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_CONFIG_PARAMS);
-	sei();
 }
 
 void perform_phase_config_calculation(void)
@@ -702,6 +759,10 @@ void main(void)
 		// button T1 -> do nothing 
 		if (program_status.buttons[0].button_pressed){
 			program_status.buttons[0].button_pressed = 0;
+			
+			perform_choose_subprog();
+			set_green_led_mode(SHORT_HEARTBEAT_LED);
+			store_config_params_permanently();			
 		}
 		
 		// button T2 -> config

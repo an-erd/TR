@@ -24,12 +24,22 @@ more or less completly delivered by the relevant interrupts.
 During WAITING MODE
 ====================
 	LED PB1/green		-> slow flashing means "waiting for command"
-	T1					-> (nothing yet)
+	T1					-> choose subprog (timer, metronome, light effects)
 	T2					-> go into config mode
-	T3					-> GO! (training)
+	T3					-> GO! (fire chosen subprog)
 
 	LED PD0..7/red/ora	-> off
 	LED PB1/green		-> short heartbeat
+
+During CHOOSE_SUBPROG
+=====================
+	T1					-> increase subprog counter w/wrap-around
+	T2					-> n/a
+	T3					-> exit choose subprog function
+
+	LED PD0..4/red		-> show configurated value
+	LED PD5..7/orange	-> n/a = OFF
+	LED PB1/green		-> fast flashing
 
 During CONFIG
 =============

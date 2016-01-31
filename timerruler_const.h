@@ -53,6 +53,12 @@
 #define NUM_SWITCHES					3
 #define SWITCH_MASK						0x07
 
+// define subprograms to use
+#define SUBPROG_TIMER					0
+#define SUBPROG_METRONOME				1
+#define SUBPROG_LIGHT_EFFECT			2
+#define NUM_SUBPROGS					3
+
 // define different phases, bit mode
 #define PHASE_MAINPROG					0	// something in main loop between different phases
 #define PHASE_CONFIG					1
