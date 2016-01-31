@@ -35,8 +35,9 @@
 #include "timerruler_const.h"
 #include "timerruler_led.h"
 
-uint8_t						EEMEM	config_params_ee[NUM_CONFIG_PARAMS] = {1, 4, 4, 3};
 uint8_t						EEMEM	subprog_param_ee					= 0;
+uint8_t						EEMEM	config_params_ee[NUM_SUBPROGS][NUM_CONFIG_PARAMS] 
+	= { {1, 4, 4, 3}, {0, 0, 0, 0}, {0, 0, 0, 0}};
 volatile static	uint8_t				PINChistory							= 0x00;
 
 void main(void) __attribute__((noreturn));
@@ -430,7 +431,7 @@ void go_to_appropriate_sleep_mode(void)
 
 void read_permanent_config_params()
 {
-	eeprom_read_block((void*) program_status.config_params, (const void*) config_params_ee, NUM_CONFIG_PARAMS);
+	eeprom_read_block((void*) program_status.config_params, (const void*) config_params_ee, NUM_SUBPROGS * NUM_CONFIG_PARAMS);
 	program_status.subprog_param = eeprom_read_byte((const uint8_t*) &subprog_param_ee);
 }
 
@@ -438,7 +439,7 @@ void store_config_params_permanently()
 {
 	cli();
 	eeprom_busy_wait();
-	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_CONFIG_PARAMS);
+	eeprom_update_block((const void*) program_status.config_params, (void*) config_params_ee, NUM_SUBPROGS * NUM_CONFIG_PARAMS);
 	eeprom_update_byte((uint8_t*) &subprog_param_ee, program_status.subprog_param); 
 	sei();
 }
@@ -529,7 +530,7 @@ void perform_phase_config(void)
 	//		Step 2-4)	press T1 x time -> store counter in .config_params[1..3]
 	//					(red leds show counter 1-5, orange leds 1, 2 or all 3 are on)
 	do {
-		tmp_config_value = program_status.config_params[loop_counter];
+		tmp_config_value = program_status.config_params[program_status.subprog_param][loop_counter];
 		PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
 		touch_deep_sleep_counter();		
 		
@@ -546,7 +547,7 @@ void perform_phase_config(void)
 				tmp_config_value = config_params_min_max[loop_counter][0];
 			}
 			PORTD = ledArrayRedCascade_LR[tmp_config_value] | ledArrayOrangeCascade_LR[loop_counter];
-			program_status.config_params[loop_counter] = tmp_config_value;	// write config back
+			program_status.config_params[program_status.subprog_param][loop_counter] = tmp_config_value;	// write config back
 		} 
 		if (program_status.buttons[1].button_pressed){
 			// T2 hit -> next configuration parameter, and wraparound
@@ -569,7 +570,7 @@ void perform_phase_config(void)
 
 void perform_phase_config_calculation(void)
 {
-	uint8_t const temp_interval_basis_sec = INTERVAL_LENGTH * program_status.config_params[CONFIG_INTERVAL_CNT];
+	uint8_t const temp_interval_basis_sec = INTERVAL_LENGTH * program_status.config_params[program_status.subprog_param][CONFIG_INTERVAL_CNT];
 	uint8_t temp_multiplied_interval_length;
 	
 	// current steps blinks .5 Hz (on/off in 2 secs), completed steps on,
@@ -578,13 +579,13 @@ void perform_phase_config_calculation(void)
 	// calculation of red leds PB0..4 (L->R)
 	// for ACTIVE phase:
 	temp_multiplied_interval_length =
-		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_ACTIVE];
+		temp_interval_basis_sec * program_status.config_params[program_status.subprog_param][CONFIG_NR_INTERVAL_ACTIVE];
 	program_status.led_steps_threshold[0][0] = temp_multiplied_interval_length / 5;
 	program_status.led_steps_threshold[1][0] =
 		program_status.led_steps_threshold[0][0] + temp_multiplied_interval_length % 5;
 	// for REST phase:
 	temp_multiplied_interval_length =
-		temp_interval_basis_sec * program_status.config_params[CONFIG_NR_INTERVAL_REST];
+		temp_interval_basis_sec * program_status.config_params[program_status.subprog_param][CONFIG_NR_INTERVAL_REST];
 	program_status.led_steps_threshold[0][1] = temp_multiplied_interval_length / 5;
 	program_status.led_steps_threshold[1][1] =
 		program_status.led_steps_threshold[0][1] + temp_multiplied_interval_length % 5;
@@ -683,7 +684,7 @@ void perform_phase_training(void)
 	// exit while-loop, if "exit_training_immediately=1" or number_cycles_reached and not repeat endlessly
 	} while ( ! exit_training_immediately 
 			&& ( (! program_status.config_params[CONFIG_NR_CYCLES])	// true, if repeat endlessly is configured
-			|| (cycle_counter < program_status.config_params[CONFIG_NR_CYCLES])));		// or all cycles completed
+			|| (cycle_counter < program_status.config_params[program_status.subprog_param][CONFIG_NR_CYCLES])));		// or all cycles completed
 
 	// all cycles completed 
 	if(!exit_training_immediately){
@@ -756,7 +757,7 @@ void main(void)
 		} while ( !program_status.buttons[0].button_pressed && !program_status.buttons[1].button_pressed 
 			&& !program_status.buttons[2].button_pressed);
 		
-		// button T1 -> do nothing 
+		// button T1 -> choose sub program to use
 		if (program_status.buttons[0].button_pressed){
 			program_status.buttons[0].button_pressed = 0;
 			

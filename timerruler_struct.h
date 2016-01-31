@@ -23,7 +23,7 @@ typedef struct
 	uint8_t			subprog_param;						// timer, metronome, light effect, ...
 	
 	uint8_t			phase;								// see defines for PHASE_CONFIG, ...
-	uint8_t			config_params[NUM_CONFIG_PARAMS];	// timer config params
+	uint8_t			config_params[NUM_SUBPROGS][NUM_CONFIG_PARAMS];	
 	
 	SButtonControl	buttons[NUM_SWITCHES];				// button debounce
 
