@@ -737,6 +737,7 @@ void perform_phase_training(void)
 
 void perform_phase_metronome(void)
 {
+	uint8_t tmp_loop_cnt = NUM_SWITCHES;
 	bit_flip(program_status.phase, BIT(PHASE_MAINPROG)|BIT(PHASE_METRONOME));
 	
 	set_led_effect(LED_OFF);
@@ -750,7 +751,13 @@ void perform_phase_metronome(void)
 		&& !  program_status.buttons[2].button_pressed ){
 		go_to_appropriate_sleep_mode();
 	}
-		
+	
+	while(tmp_loop_cnt--){
+		if (program_status.buttons[tmp_loop_cnt].button_pressed){
+			program_status.buttons[tmp_loop_cnt].button_pressed = 0;
+		}
+	};
+
 	// cleanup
 	set_green_led_mode(LED_OFF);
 	led_set_all(OFF);
@@ -824,7 +831,6 @@ void main(void)
 #endif // _INCREASE_NUM_LED_ON_
 
 	read_permanent_config_params();
-	perform_phase_config_calculation();
 	set_sleep_mode(SLEEP_MODE_IDLE);	// two different stages will be used, IDLE if heartbeat is on, and later PWR_DOWN
 	set_green_led_mode(SHORT_HEARTBEAT_LED);
 	
@@ -842,7 +848,6 @@ void main(void)
 			perform_choose_subprog();
 			set_green_led_mode(SHORT_HEARTBEAT_LED);
 			store_config_params_permanently();
-			perform_phase_config_calculation();		
 		}
 		
 		// button T2 -> configuration of subprogram used
@@ -862,8 +867,6 @@ void main(void)
 					break;
 			}
 			store_config_params_permanently();
-			perform_phase_config_calculation();
-			
 			execute_subprogram_next = 1;			
 		}
 
@@ -875,6 +878,7 @@ void main(void)
 
 		if (execute_subprogram_next){
 			execute_subprogram_next = 0;
+			perform_phase_config_calculation();
 			switch(program_status.subprog_param){
 				case SUBPROG_TIMER: 
 					perform_phase_training();	
